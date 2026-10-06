@@ -17,7 +17,8 @@ import {
   FileCheck,
   AlertCircle,
   Inbox,
-  Plus
+  Plus,
+  Download
 } from "lucide-react";
 import {
   getEnviosPendentes,
@@ -25,7 +26,7 @@ import {
   updateEnvio,
   deleteEnvio
 } from "../../services/envioService";
-import { MOTIVOS } from "../../constants/envioConfig";
+import { MOTIVOS, exportarParaCsvCorreios } from "../../constants/envioConfig";
 import styles from "./BacklogEnvios.module.css";
 
 const getBadgeStyle = (motivoNome) => {
@@ -252,6 +253,17 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
         </div>
 
         <div className={styles.actionsRight}>
+          <button
+            type="button"
+            className={styles.btnExportCorreios}
+            onClick={() => exportarParaCsvCorreios(listaExibida)}
+            title="Exportar lote formatado para importação nos Correios (CSV)"
+            disabled={listaExibida.length === 0}
+          >
+            <Download size={14} />
+            <span>Exportar Correios (CSV)</span>
+          </button>
+
           {onNavigateToNew && (
             <button
               type="button"
@@ -738,6 +750,20 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                   </div>
                 </div>
               </div>
+
+              {itemDetalhes.itens && itemDetalhes.itens.length > 0 && (
+                <div>
+                  <span style={{ color: "var(--vp-text-muted)", fontSize: "0.75rem" }}>Itens Inclusos no Pacote:</span>
+                  <div style={{ background: "var(--vp-bg-main)", padding: "0.5rem", borderRadius: "4px", fontSize: "0.85rem", marginTop: "2px" }}>
+                    {itemDetalhes.itens.map((it, idx) => (
+                      <div key={idx} style={{ display: "flex", gap: "0.4rem" }}>
+                        <strong>{it.qtd || 1}x</strong>
+                        <span>{it.isCustom ? (it.nomeCustom || it.nome) : it.nome}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {itemDetalhes.endereco && (
                 <div>

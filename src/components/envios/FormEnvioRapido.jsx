@@ -7,83 +7,79 @@ import {
   X,
   RotateCcw,
   Save,
-  CheckSquare,
-  Square,
-  ExternalLink,
-  Tag,
-  Truck,
+  Plus,
+  Trash2,
   Cpu,
-  FileText
+  FileText,
+  MapPin,
+  Search,
+  Box
 } from "lucide-react";
 import { createEnvio, updateEnvio } from "../../services/envioService";
 import {
   MOTIVOS,
   EQUIPAMENTOS_PADRAO,
+  TIPOS_SERVICO_CORREIOS,
   formatarMacOuSerial
 } from "../../constants/envioConfig";
 import styles from "./FormEnvioRapido.module.css";
 
-const TIPOS_ENVIO = [
-  "SEDEX",
-  "PAC",
-  "Retirada",
-  "Transportadora",
-  "Motoboy",
-  "Logística Reversa"
-];
+const INITIAL_ITEM = { qtd: 1, nome: EQUIPAMENTOS_PADRAO[0], isCustom: false, nomeCustom: "" };
 
 const INITIAL_STATE = {
   data: new Date().toISOString().split("T")[0],
-  rastreio: "",
-  conteudo: "",
+  itens: [INITIAL_ITEM],
   mac: "",
-  destinatario: "",
-  testado: false,
-  nfe: "",
   chamado: "",
   linkChamado: "",
-  tipoEnvio: "SEDEX",
-  endereco: "",
+  nfe: "",
   motivo: "Suporte",
+  // Destinatário no padrão oficial dos Correios
+  destinatario: "",
+  cep: "",
+  logradouro: "",
+  numero: "",
+  semNumero: false,
+  complemento: "",
+  bairro: "",
+  cidade: "",
+  uf: "",
+  cpfCnpj: "",
+  celular: "",
+  email: "",
+  // Objeto Postagem Correios
+  tipoEnvio: "SEDEX",
+  centroCusto: "SUPORTE",
+  pesoGramas: "500",
+  dimensoes: "16x11x6",
+  valorDeclarado: "",
+  declararConteudo: true,
+  // Validações da Bancada
   observacoes: "",
+  testado: false,
   doubleCheck: false,
   enviado: false
 };
 
 export default function FormEnvioRapido({ initialData = null, onSuccess = null, onCancel = null }) {
   const [formData, setFormData] = useState(INITIAL_STATE);
-  const [isCustomItem, setIsCustomItem] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingCep, setLoadingCep] = useState(false);
   const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
   const macInputRef = useRef(null);
 
   useEffect(() => {
     if (initialData) {
-      const isCustom = Boolean(
-        initialData.conteudo &&
-        !EQUIPAMENTOS_PADRAO.includes(initialData.conteudo)
-      );
-      setIsCustomItem(isCustom);
-
       setFormData({
-        data: initialData.data || new Date().toISOString().split("T")[0],
-        rastreio: initialData.rastreio || "",
-        conteudo: initialData.conteudo || "",
-        mac: initialData.mac || "",
-        destinatario: initialData.destinatario || "",
-        testado: Boolean(initialData.testado),
-        nfe: initialData.nfe || "",
-        chamado: initialData.chamado || "",
-        linkChamado: initialData.linkChamado || "",
-        tipoEnvio: initialData.tipoEnvio || "SEDEX",
-        endereco: initialData.endereco || "",
+        ...INITIAL_STATE,
+        ...initialData,
         motivo: initialData.motivo || "Suporte",
-        observacoes: initialData.observacoes || "",
-        doubleCheck: Boolean(initialData.doubleCheck),
-        enviado: Boolean(initialData.enviado)
+        tipoEnvio: initialData.tipoEnvio || "SEDEX",
+        itens: initialData.itens && initialData.itens.length > 0
+          ? initialData.itens
+          : [{ qtd: 1, nome: initialData.conteudo || EQUIPAMENTOS_PADRAO[0], isCustom: true, nomeCustom: initialData.conteudo || "" }]
       });
     } else {
-      setIsCustomItem(false);
       setFormData(INITIAL_STATE);
     }
   }, [initialData]);
@@ -100,6 +96,64 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Busca automática do CEP na API ViaCEP
+  const buscarCep = async (cepValue) => {
+    const cepLimpo = (cepValue || "").replace(/\D/g, "");
+    if (cepLimpo.length !== 8) return;
+
+    setLoadingCep(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await res.json();
+      if (!data.erro) {
+        setFormData((prev) => ({
+          ...prev,
+          logradouro: data.logradouro || prev.logradouro,
+          bairro: data.bairro || prev.bairro,
+          cidade: data.localidade || prev.cidade,
+          uf: data.uf || prev.uf
+        }));
+      }
+    } catch (err) {
+      console.warn("Erro ao buscar CEP:", err);
+    } finally {
+      setLoadingCep(false);
+    }
+  };
+
+  const handleCepChange = (e) => {
+    let v = e.target.value.replace(/\D/g, "").slice(0, 8);
+    if (v.length > 5) v = `${v.slice(0, 5)}-${v.slice(5)}`;
+    setFormData((prev) => ({ ...prev, cep: v }));
+    if (v.replace(/\D/g, "").length === 8) {
+      buscarCep(v);
+    }
+  };
+
+  // Gerenciamento dinâmico dos Itens com botão "+"
+  const handleAddItem = () => {
+    setFormData((prev) => ({
+      ...prev,
+      itens: [...prev.itens, { qtd: 1, nome: EQUIPAMENTOS_PADRAO[0], isCustom: false, nomeCustom: "" }]
+    }));
+  };
+
+  const handleRemoveItem = (index) => {
+    if (formData.itens.length <= 1) return;
+    setFormData((prev) => ({
+      ...prev,
+      itens: prev.itens.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleItemChange = (index, field, value) => {
+    setFormData((prev) => {
+      const novos = [...prev.itens];
+      novos[index] = { ...novos[index], [field]: value };
+      return { ...prev, itens: novos };
+    });
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -109,91 +163,75 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
   };
 
   const handleMacChange = (e) => {
-    const formatado = formatarMacOuSerial(e.target.value);
-    setFormData((prev) => ({ ...prev, mac: formatado }));
-  };
-
-  const handleToggleCustomItem = (e) => {
-    const checked = e.target.checked;
-    setIsCustomItem(checked);
-    setFormData((prev) => ({ ...prev, conteudo: "" }));
+    setFormData((prev) => ({ ...prev, mac: formatarMacOuSerial(e.target.value) }));
   };
 
   const preencherNfePendente = () => {
-    setFormData((prev) => ({
-      ...prev,
-      nfe: "A ser informado"
-    }));
+    setFormData((prev) => ({ ...prev, nfe: "A ser informado" }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.conteudo.trim()) {
-      setStatusMessage({
-        type: "error",
-        text: "Informe o conteúdo do pacote para continuar."
-      });
+    if (!formData.destinatario.trim()) {
+      setStatusMessage({ type: "error", text: "Informe o Nome / Razão Social do destinatário." });
       return;
     }
 
-    if (!formData.destinatario.trim()) {
-      setStatusMessage({
-        type: "error",
-        text: "Informe o destinatário ou operador responsável."
-      });
+    // Monta a descrição consolidada do conteúdo (ex: 1x Payblu... + 2x Kit Cabo...)
+    const descricaoConteudo = formData.itens
+      .map((it) => {
+        const nomeFinal = it.isCustom ? (it.nomeCustom || "").trim() : it.nome;
+        return `${it.qtd || 1}x ${nomeFinal}`;
+      })
+      .filter(Boolean)
+      .join(" + ");
+
+    if (!descricaoConteudo.trim()) {
+      setStatusMessage({ type: "error", text: "Adicione ao menos um item válido ao pacote." });
       return;
     }
+
+    // Monta endereço consolidado para relatórios e histórico
+    const logr = formData.logradouro || "";
+    const num = formData.semNumero ? "S/N" : (formData.numero || "");
+    const comp = formData.complemento ? ` - ${formData.complemento}` : "";
+    const brr = formData.bairro || "";
+    const cid = formData.cidade || "";
+    const uf = formData.uf || "";
+    const cep = formData.cep || "";
+
+    const enderecoConsolidado = `${logr}${num ? ", " + num : ""}${comp} - ${brr}, ${cid} - ${uf}, CEP: ${cep}`.trim();
+
+    const payload = {
+      ...formData,
+      conteudo: descricaoConteudo,
+      endereco: enderecoConsolidado,
+      rastreio: initialData?.rastreio || "", // Rastreio só é atribuído no despacho/conclusão!
+      centroCusto: (formData.motivo || "SUPORTE").toUpperCase()
+    };
 
     setLoading(true);
     setStatusMessage({ type: "", text: "" });
 
     try {
-      if (initialData && initialData.id) {
-        await updateEnvio(initialData.id, formData);
-        setStatusMessage({
-          type: "success",
-          text: `Envio atualizado com sucesso (${initialData.chamado || "Registro"}).`
-        });
+      if (initialData?.id) {
+        await updateEnvio(initialData.id, payload);
+        setStatusMessage({ type: "success", text: "Envio atualizado com sucesso!" });
       } else {
-        await createEnvio(formData);
-        setStatusMessage({
-          type: "success",
-          text: `Registro de envio cadastrado com sucesso!`
-        });
-
-        // Mantém a data de hoje e reseta para o próximo item da bancada
-        setIsCustomItem(false);
-        setFormData({
-          ...INITIAL_STATE,
-          data: formData.data || new Date().toISOString().split("T")[0]
-        });
-
-        if (macInputRef.current) {
-          macInputRef.current.focus();
-        }
+        await createEnvio(payload);
+        setStatusMessage({ type: "success", text: "Pacote registrado e pronto para fila de postagem!" });
+        setFormData({ ...INITIAL_STATE, data: formData.data });
+        if (macInputRef.current) macInputRef.current.focus();
       }
 
-      if (onSuccess) {
-        setTimeout(() => {
-          onSuccess();
-        }, 600);
-      }
+      if (onSuccess) setTimeout(() => onSuccess(), 600);
     } catch (err) {
       console.error("Erro ao salvar envio:", err);
-      setStatusMessage({
-        type: "error",
-        text: "Erro ao salvar no banco de dados. Verifique a conexão."
-      });
+      setStatusMessage({ type: "error", text: "Erro ao salvar no banco de dados." });
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleReset = () => {
-    setIsCustomItem(false);
-    setFormData(INITIAL_STATE);
-    setStatusMessage({ type: "", text: "" });
   };
 
   const motivoSelecionado = MOTIVOS[formData.motivo];
@@ -205,39 +243,24 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
           <PackagePlus className={styles.headerIcon} />
           <div>
             <h2 className={styles.headerTitle}>
-              {initialData ? "Editar Registro de Envio" : "Registro Rápido de Envio (Bancada AT)"}
+              {initialData ? "Editar Pacote de Envio" : "Registro de Pacote para Postagem (Bancada AT)"}
             </h2>
             <p className={styles.headerSubtitle}>
-              Preenchimento ágil para triagem, liberação e controle de NF-e da Assistência Técnica
+              Preparo rápido da caixa na bancada integrado com o layout oficial de postagem dos Correios
             </p>
           </div>
         </div>
-
         {initialData && onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className={styles.btnSecondary}
-          >
-            <X size={16} /> Cancelar Edição
+          <button type="button" onClick={onCancel} className={styles.btnSecondary}>
+            <X size={16} /> Cancelar
           </button>
         )}
       </div>
 
       {statusMessage.text && (
-        <div
-          className={
-            statusMessage.type === "success"
-              ? styles.bannerSuccess
-              : styles.bannerError
-          }
-        >
+        <div className={statusMessage.type === "success" ? styles.bannerSuccess : styles.bannerError}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            {statusMessage.type === "success" ? (
-              <CheckCircle2 size={18} />
-            ) : (
-              <AlertCircle size={18} />
-            )}
+            {statusMessage.type === "success" ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
             <span>{statusMessage.text}</span>
           </div>
           <button
@@ -252,20 +275,92 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
       )}
 
       <form onSubmit={handleSubmit} className={styles.form}>
-        {/* Bloco 1: Identificação & Chamado */}
-        <div className={styles.sectionTitle}>
-          <FileText size={14} /> Dados Operacionais & Chamado
+        {/* Bloco 1: Itens Enviados (Multi-itens dinâmico com +) */}
+        <div className={styles.sectionTitleRow}>
+          <div className={styles.sectionTitle}>
+            <Cpu size={15} /> Conteúdo / Itens Enviados no Pacote
+          </div>
+          <button type="button" className={styles.btnAddItem} onClick={handleAddItem}>
+            <Plus size={14} /> Adicionar Item (+)
+          </button>
+        </div>
+
+        <div className={styles.itemsList}>
+          {formData.itens.map((item, idx) => (
+            <div key={idx} className={styles.itemRow}>
+              <div className={styles.itemQtd}>
+                <label className={styles.subLabel}>Qtd</label>
+                <input
+                  type="number"
+                  min="1"
+                  className={styles.inputQtd}
+                  value={item.qtd}
+                  onChange={(e) => handleItemChange(idx, "qtd", Number(e.target.value) || 1)}
+                />
+              </div>
+
+              <div className={styles.itemDesc}>
+                <div className={styles.labelRow}>
+                  <label className={styles.subLabel}>Equipamento / Acessório #{idx + 1}</label>
+                  <label className={styles.checkboxInline}>
+                    <input
+                      type="checkbox"
+                      checked={item.isCustom}
+                      onChange={(e) => handleItemChange(idx, "isCustom", e.target.checked)}
+                    />
+                    Outro / Não listado
+                  </label>
+                </div>
+
+                {item.isCustom ? (
+                  <input
+                    type="text"
+                    className={styles.input}
+                    placeholder="Digite o nome customizado do item..."
+                    value={item.nomeCustom}
+                    onChange={(e) => handleItemChange(idx, "nomeCustom", e.target.value)}
+                    required
+                    autoFocus
+                  />
+                ) : (
+                  <select
+                    className={styles.select}
+                    value={item.nome}
+                    onChange={(e) => handleItemChange(idx, "nome", e.target.value)}
+                  >
+                    {EQUIPAMENTOS_PADRAO.map((equip) => (
+                      <option key={equip} value={equip}>{equip}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {formData.itens.length > 1 && (
+                <button
+                  type="button"
+                  className={styles.btnRemoveItem}
+                  onClick={() => handleRemoveItem(idx)}
+                  title="Remover linha"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Bloco 2: Identificação Técnica, Fiscal & Chamado */}
+        <div className={styles.sectionTitle} style={{ marginTop: "1rem" }}>
+          <FileText size={15} /> Chamado & Controle Fiscal
         </div>
 
         <div className={styles.grid}>
           <div className={`${styles.fieldGroup} ${styles.col3}`}>
-            <label className={styles.label} htmlFor="data">
-              Data de Registro <span className={styles.required}>*</span>
-            </label>
+            <label className={styles.label} htmlFor="data">Data do Pacote *</label>
             <input
               id="data"
-              name="data"
               type="date"
+              name="data"
               className={styles.input}
               value={formData.data}
               onChange={handleChange}
@@ -274,127 +369,82 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
           </div>
 
           <div className={`${styles.fieldGroup} ${styles.col3}`}>
-            <label className={styles.label} htmlFor="chamado">
-              Chamado / Ticket
-            </label>
+            <label className={styles.label} htmlFor="mac">MAC / Número de Série</label>
+            <input
+              id="mac"
+              ref={macInputRef}
+              type="text"
+              name="mac"
+              placeholder="b0:cb:d8:5f:d1:c2"
+              className={styles.input}
+              value={formData.mac}
+              onChange={handleMacChange}
+              onBlur={handleMacChange}
+            />
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.col3}`}>
+            <label className={styles.label} htmlFor="chamado">Chamado / Ticket</label>
             <input
               id="chamado"
-              name="chamado"
               type="text"
-              placeholder="#10492"
+              name="chamado"
+              placeholder="#87911"
               className={styles.input}
               value={formData.chamado}
               onChange={handleChange}
             />
           </div>
 
-          <div className={`${styles.fieldGroup} ${styles.col6}`}>
-            <label className={styles.label} htmlFor="linkChamado">
-              Link do Chamado (URL)
-            </label>
-            <div className={styles.inputWrapper}>
-              <input
-                id="linkChamado"
-                name="linkChamado"
-                type="url"
-                placeholder="https://suporte.vendpago.com.br/ticket/..."
-                className={styles.input}
-                value={formData.linkChamado}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Bloco 2: Equipamento & Fiscal */}
-        <div className={styles.sectionTitle}>
-          <Cpu size={14} /> Equipamento & Controle Fiscal
-        </div>
-
-        <div className={styles.grid}>
-          <div className={`${styles.fieldGroup} ${styles.col6}`}>
-            <div className={styles.labelRow}>
-              <label className={styles.label} htmlFor="conteudo">
-                Conteúdo / Itens Enviados <span className={styles.required}>*</span>
-              </label>
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={isCustomItem}
-                  onChange={handleToggleCustomItem}
-                />
-                Outro / Não listado
-              </label>
-            </div>
-
-            {isCustomItem ? (
-              <input
-                id="conteudo"
-                name="conteudo"
-                type="text"
-                className={styles.input}
-                placeholder="Digite o nome do equipamento customizado..."
-                value={formData.conteudo}
-                onChange={handleChange}
-                required
-                autoFocus
-              />
-            ) : (
+          <div className={`${styles.fieldGroup} ${styles.col3}`}>
+            <label className={styles.label} htmlFor="motivo">Motivo do Envio *</label>
+            <div className={styles.motivoSelectorWrapper}>
               <select
-                id="conteudo"
-                name="conteudo"
+                id="motivo"
+                name="motivo"
                 className={styles.select}
-                value={formData.conteudo}
+                value={formData.motivo}
                 onChange={handleChange}
-                required
+                style={{
+                  borderColor: motivoSelecionado?.border,
+                  backgroundColor: motivoSelecionado?.bg,
+                  color: motivoSelecionado?.color,
+                  fontWeight: 600
+                }}
               >
-                <option value="">Selecione um equipamento cadastrado...</option>
-                {EQUIPAMENTOS_PADRAO.map((equip) => (
-                  <option key={equip} value={equip}>
-                    {equip}
-                  </option>
+                {Object.values(MOTIVOS).map((m) => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
                 ))}
               </select>
-            )}
+            </div>
           </div>
 
           <div className={`${styles.fieldGroup} ${styles.col6}`}>
-            <label className={styles.label} htmlFor="mac">
-              MAC / Número de Série
-            </label>
+            <label className={styles.label} htmlFor="linkChamado">Link do Chamado (URL)</label>
             <input
-              id="mac"
-              name="mac"
-              ref={macInputRef}
-              type="text"
-              placeholder="Ex: b0cbd85fd1c2 ou SN123456"
+              id="linkChamado"
+              type="url"
+              name="linkChamado"
+              placeholder="https://vendpago.atlassian.net..."
               className={styles.input}
-              value={formData.mac}
-              onChange={handleMacChange}
-              onBlur={handleMacChange}
+              value={formData.linkChamado}
+              onChange={handleChange}
             />
-            <small className={styles.helperText}>
-              Cole 12 caracteres hexadecimais para formatar MAC automaticamente em <code>xx:xx:xx:xx:xx:xx</code>.
-            </small>
           </div>
 
           <div className={`${styles.fieldGroup} ${styles.col6}`}>
             <label className={styles.label} htmlFor="nfe">
-              <span>
-                Nota Fiscal (NF-e)
-                {formData.nfe.toLowerCase() === "a ser informado" && (
-                  <span className={styles.badgePendente} style={{ marginLeft: "6px" }}>
-                    Aguardando NF-e
-                  </span>
-                )}
-              </span>
+              <span>Nota Fiscal (NF-e)</span>
+              {formData.nfe.toLowerCase() === "a ser informado" && (
+                <span className={styles.badgePendente}>Aguardando NF-e</span>
+              )}
             </label>
             <div className={styles.nfeContainer}>
               <input
                 id="nfe"
-                name="nfe"
                 type="text"
-                placeholder="Número da NF ou use o atalho"
+                name="nfe"
+                placeholder="Número da NF-e"
                 className={styles.input}
                 value={formData.nfe}
                 onChange={handleChange}
@@ -409,65 +459,21 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
               </button>
             </div>
           </div>
-
-          <div className={`${styles.fieldGroup} ${styles.col6}`}>
-            <label className={styles.label} htmlFor="motivo">
-              Motivo do Envio <span className={styles.required}>*</span>
-            </label>
-            <div className={styles.motivoSelectorWrapper}>
-              <select
-                id="motivo"
-                name="motivo"
-                className={styles.select}
-                value={formData.motivo}
-                onChange={handleChange}
-                style={{
-                  borderColor: motivoSelecionado ? motivoSelecionado.border : undefined,
-                  backgroundColor: motivoSelecionado ? motivoSelecionado.bg : undefined,
-                  color: motivoSelecionado ? motivoSelecionado.color : undefined,
-                  fontWeight: motivoSelecionado ? 600 : "normal"
-                }}
-                required
-              >
-                <option value="">Selecione o motivo...</option>
-                {Object.values(MOTIVOS).map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-
-              {motivoSelecionado && (
-                <span
-                  className={styles.motivoBadge}
-                  style={{
-                    backgroundColor: motivoSelecionado.bg,
-                    color: motivoSelecionado.color,
-                    borderColor: motivoSelecionado.border
-                  }}
-                >
-                  {motivoSelecionado.label}
-                </span>
-              )}
-            </div>
-          </div>
         </div>
 
-        {/* Bloco 3: Logística & Destino */}
-        <div className={styles.sectionTitle}>
-          <Truck size={14} /> Logística & Rastreamento
+        {/* Bloco 3: Destinatário Padrão Oficial Correios */}
+        <div className={styles.sectionTitle} style={{ marginTop: "1rem" }}>
+          <MapPin size={15} /> Destinatário (Layout Oficial Correios)
         </div>
 
         <div className={styles.grid}>
-          <div className={`${styles.fieldGroup} ${styles.col6}`}>
-            <label className={styles.label} htmlFor="destinatario">
-              Destinatário / Operador Responsável <span className={styles.required}>*</span>
-            </label>
+          <div className={`${styles.fieldGroup} ${styles.col8}`}>
+            <label className={styles.label} htmlFor="destinatario">Nome / Razão Social *</label>
             <input
               id="destinatario"
-              name="destinatario"
               type="text"
-              placeholder="Nome da Filial, Cliente ou Técnico"
+              name="destinatario"
+              placeholder="Ex: Lavanderia Central Ltda"
               className={styles.input}
               value={formData.destinatario}
               onChange={handleChange}
@@ -475,10 +481,169 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
             />
           </div>
 
-          <div className={`${styles.fieldGroup} ${styles.col3}`}>
-            <label className={styles.label} htmlFor="tipoEnvio">
-              Tipo de Envio
+          <div className={`${styles.fieldGroup} ${styles.col4}`}>
+            <label className={styles.label} htmlFor="cep">
+              <span>CEP *</span>
+              {loadingCep && <span style={{ fontSize: "0.7rem", color: "var(--vp-blue-primary)" }}>Buscando...</span>}
             </label>
+            <div className={styles.inputWrapper}>
+              <input
+                id="cep"
+                type="text"
+                name="cep"
+                placeholder="00000-000"
+                className={styles.input}
+                value={formData.cep}
+                onChange={handleCepChange}
+                onBlur={() => buscarCep(formData.cep)}
+              />
+              <button
+                type="button"
+                className={styles.btnIconInput}
+                onClick={() => buscarCep(formData.cep)}
+                title="Recarregar CEP"
+              >
+                <Search size={14} />
+              </button>
+            </div>
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.col7}`}>
+            <label className={styles.label} htmlFor="logradouro">Endereço (Logradouro) *</label>
+            <input
+              id="logradouro"
+              type="text"
+              name="logradouro"
+              placeholder="Rua / Av..."
+              className={styles.input}
+              value={formData.logradouro}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.col2}`}>
+            <div className={styles.labelRow}>
+              <label className={styles.label} htmlFor="numero">N.º *</label>
+              <label className={styles.checkboxInline}>
+                <input
+                  type="checkbox"
+                  name="semNumero"
+                  checked={formData.semNumero}
+                  onChange={handleChange}
+                />
+                S/N
+              </label>
+            </div>
+            <input
+              id="numero"
+              type="text"
+              name="numero"
+              disabled={formData.semNumero}
+              className={styles.input}
+              value={formData.semNumero ? "" : formData.numero}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.col3}`}>
+            <label className={styles.label} htmlFor="complemento">Complemento</label>
+            <input
+              id="complemento"
+              type="text"
+              name="complemento"
+              placeholder="Sala, Bloco, Galpão"
+              className={styles.input}
+              value={formData.complemento}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.col5}`}>
+            <label className={styles.label} htmlFor="bairro">Bairro *</label>
+            <input
+              id="bairro"
+              type="text"
+              name="bairro"
+              className={styles.input}
+              value={formData.bairro}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.col5}`}>
+            <label className={styles.label} htmlFor="cidade">Cidade *</label>
+            <input
+              id="cidade"
+              type="text"
+              name="cidade"
+              className={styles.input}
+              value={formData.cidade}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.col2}`}>
+            <label className={styles.label} htmlFor="uf">UF *</label>
+            <input
+              id="uf"
+              type="text"
+              name="uf"
+              maxLength="2"
+              placeholder="PR"
+              className={styles.input}
+              value={formData.uf}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.col4}`}>
+            <label className={styles.label} htmlFor="cpfCnpj">CPF / CNPJ</label>
+            <input
+              id="cpfCnpj"
+              type="text"
+              name="cpfCnpj"
+              placeholder="00.000.000/0000-00"
+              className={styles.input}
+              value={formData.cpfCnpj}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.col4}`}>
+            <label className={styles.label} htmlFor="celular">Celular</label>
+            <input
+              id="celular"
+              type="text"
+              name="celular"
+              placeholder="(00) 00000-0000"
+              className={styles.input}
+              value={formData.celular}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.col4}`}>
+            <label className={styles.label} htmlFor="email">E-mail</label>
+            <input
+              id="email"
+              type="email"
+              name="email"
+              placeholder="contato@empresa.com"
+              className={styles.input}
+              value={formData.email}
+              onChange={handleChange}
+            />
+          </div>
+        </div>
+
+        {/* Bloco 4: Objeto & Configurações da Postagem */}
+        <div className={styles.sectionTitle} style={{ marginTop: "1rem" }}>
+          <Box size={15} /> Objeto da Postagem (Pacote Correios)
+        </div>
+
+        <div className={styles.grid}>
+          <div className={`${styles.fieldGroup} ${styles.col4}`}>
+            <label className={styles.label} htmlFor="tipoEnvio">Serviço de Postagem</label>
             <select
               id="tipoEnvio"
               name="tipoEnvio"
@@ -486,52 +651,56 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
               value={formData.tipoEnvio}
               onChange={handleChange}
             >
-              {TIPOS_ENVIO.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
+              {TIPOS_SERVICO_CORREIOS.map((s) => (
+                <option key={s} value={s}>{s}</option>
               ))}
             </select>
           </div>
 
           <div className={`${styles.fieldGroup} ${styles.col3}`}>
-            <label className={styles.label} htmlFor="rastreio">
-              Código de Rastreio
-            </label>
+            <label className={styles.label} htmlFor="centroCusto">C. Custos (Centro de Custo)</label>
             <input
-              id="rastreio"
-              name="rastreio"
+              id="centroCusto"
               type="text"
-              placeholder="Ex: QB123456789BR"
+              name="centroCusto"
               className={styles.input}
-              value={formData.rastreio}
+              value={(formData.motivo || "SUPORTE").toUpperCase()}
+              readOnly
+            />
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.col2}`}>
+            <label className={styles.label} htmlFor="pesoGramas">Peso (g)</label>
+            <input
+              id="pesoGramas"
+              type="text"
+              name="pesoGramas"
+              placeholder="500"
+              className={styles.input}
+              value={formData.pesoGramas}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={`${styles.fieldGroup} ${styles.col3}`}>
+            <label className={styles.label} htmlFor="valorDeclarado">Valor Declarado (R$)</label>
+            <input
+              id="valorDeclarado"
+              type="text"
+              name="valorDeclarado"
+              placeholder="Ex: 1500,00"
+              className={styles.input}
+              value={formData.valorDeclarado}
               onChange={handleChange}
             />
           </div>
 
           <div className={`${styles.fieldGroup} ${styles.col12}`}>
-            <label className={styles.label} htmlFor="endereco">
-              Endereço Completo de Destino
-            </label>
-            <input
-              id="endereco"
-              name="endereco"
-              type="text"
-              placeholder="Rua, Número, Bairro, Cidade - UF, CEP"
-              className={styles.input}
-              value={formData.endereco}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className={`${styles.fieldGroup} ${styles.col12}`}>
-            <label className={styles.label} htmlFor="observacoes">
-              Observações Técnicas da Bancada
-            </label>
+            <label className={styles.label} htmlFor="observacoes">Observações da Bancada</label>
             <textarea
               id="observacoes"
               name="observacoes"
-              placeholder="Informações adicionais sobre reparo, estado das peças ou orientações de despacho..."
+              placeholder="Informações adicionais da assistência técnica..."
               className={styles.textarea}
               value={formData.observacoes}
               onChange={handleChange}
@@ -539,7 +708,7 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
           </div>
         </div>
 
-        {/* Bloco 4: Validação de Qualidade & Status */}
+        {/* Bloco 5: Checklist da Bancada */}
         <div className={styles.checkPanel}>
           <div className={styles.checkGroup}>
             <label className={`${styles.checkLabel} ${styles.checkLabelSuccess}`}>
@@ -551,9 +720,7 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
                 onChange={handleChange}
               />
               <span>Testado na Bancada</span>
-              <span className={styles.checkHelper}>(QA Funcional OK)</span>
             </label>
-
             <label className={`${styles.checkLabel} ${styles.checkLabelSuccess}`}>
               <input
                 type="checkbox"
@@ -563,44 +730,22 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
                 onChange={handleChange}
               />
               <span>Double Check Realizado</span>
-              <span className={styles.checkHelper}>(Conferência Física)</span>
-            </label>
-          </div>
-
-          <div className={styles.checkGroup}>
-            <label className={styles.checkLabel}>
-              <input
-                type="checkbox"
-                name="enviado"
-                className={styles.checkboxInput}
-                checked={formData.enviado}
-                onChange={handleChange}
-              />
-              <span style={{ color: formData.enviado ? "var(--vp-emerald-dark)" : "inherit" }}>
-                Despachado / Concluído
-              </span>
             </label>
           </div>
         </div>
 
-        {/* Rodapé de Ações */}
         <div className={styles.actionsBar}>
           <button
             type="button"
-            onClick={handleReset}
+            onClick={() => setFormData(INITIAL_STATE)}
             className={styles.btnSecondary}
             disabled={loading}
           >
             <RotateCcw size={16} /> Limpar
           </button>
-
-          <button
-            type="submit"
-            className={styles.btnPrimary}
-            disabled={loading}
-          >
+          <button type="submit" className={styles.btnPrimary} disabled={loading}>
             <Save size={16} />
-            <span>{loading ? "Gravando..." : initialData ? "Salvar Alterações" : "Salvar Registro"}</span>
+            <span>{loading ? "Gravando..." : initialData ? "Salvar Alterações" : "Cadastrar na Fila de Postagem"}</span>
             <span className={styles.keyboardHint}>(Enter)</span>
           </button>
         </div>

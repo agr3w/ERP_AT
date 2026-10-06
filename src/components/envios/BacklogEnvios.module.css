@@ -497,3 +497,25 @@
   color: #334155;
   display: inline-block;
 }
+
+.btnExportCorreios {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 36px;
+  padding: 0 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background-color: var(--vp-blue-primary);
+  border: 1px solid var(--vp-blue-primary);
+  border-radius: var(--vp-radius-sm);
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btnExportCorreios:hover {
+  background-color: var(--vp-navy-dark);
+  border-color: var(--vp-navy-dark);
+}
