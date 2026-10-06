@@ -1,0 +1,171 @@
+.pageContainer {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--vp-bg-main);
+}
+
+/* Header Corporativo VendPago */
+.header {
+  background-color: var(--vp-navy-dark);
+  color: #ffffff;
+  border-bottom: 2px solid var(--vp-blue-primary);
+  box-shadow: 0 2px 4px rgba(0, 30, 64, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.headerInner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.brandArea {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.brandLogoBox {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--vp-radius-sm);
+  background-color: var(--vp-blue-primary);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+}
+
+.brandCompany {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.brandTitle {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+}
+
+/* Navegação Principal por Abas */
+.navTabs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background-color: rgba(0, 20, 44, 0.6);
+  padding: 3px;
+  border-radius: var(--vp-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.navTabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  background: transparent;
+  border: none;
+  border-radius: var(--vp-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.navTabBtn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.navTabBtnActive {
+  color: #ffffff;
+  background-color: var(--vp-blue-primary);
+}
+
+.navBadge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.navBadgeAlert {
+  background-color: var(--vp-danger);
+  color: #ffffff;
+}
+
+/* Informações de Operador / Bancada */
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--vp-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--vp-emerald);
+}
+
+/* Área Principal de Conteúdo */
+.mainContent {
+  flex: 1;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 2.5rem 1.5rem;
+}
+
+/* Rodapé Corporativo */
+.footer {
+  border-top: 1px solid var(--vp-border-subtle);
+  background-color: var(--vp-bg-surface);
+  padding: 0.85rem 1.5rem;
+  font-size: 0.75rem;
+  color: var(--vp-text-muted);
+}
+
+.footerInner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

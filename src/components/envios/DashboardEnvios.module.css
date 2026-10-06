@@ -1,0 +1,312 @@
+.container {
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--vp-border-subtle);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.titleArea {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.titleIcon {
+  color: var(--vp-blue-primary);
+  width: 22px;
+  height: 22px;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--vp-navy-dark);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: var(--vp-text-muted);
+}
+
+.periodBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--vp-text-secondary);
+  background-color: var(--vp-bg-surface);
+  border: 1px solid var(--vp-border-default);
+  border-radius: var(--vp-radius-sm);
+}
+
+/* Grid de Cards de KPI */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kpiCard {
+  background-color: var(--vp-bg-surface);
+  border: 1px solid var(--vp-border-subtle);
+  border-radius: var(--vp-radius-md);
+  padding: 1.15rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transition: border-color 0.15s ease;
+}
+
+.kpiCard:hover {
+  border-color: var(--vp-border-dark);
+}
+
+.kpiCardCritical {
+  border-left: 4px solid var(--vp-danger);
+  background-color: #fffbfb;
+}
+
+.kpiCardWarning {
+  border-left: 4px solid var(--vp-warning);
+}
+
+.kpiCardSuccess {
+  border-left: 4px solid var(--vp-emerald);
+}
+
+.kpiTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.kpiLabel {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  color: var(--vp-text-secondary);
+}
+
+.kpiIconWrapper {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--vp-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--vp-bg-subtle);
+  color: var(--vp-text-secondary);
+}
+
+.iconCritical {
+  background-color: var(--vp-danger-light);
+  color: var(--vp-danger);
+}
+
+.iconWarning {
+  background-color: var(--vp-warning-light);
+  color: var(--vp-warning);
+}
+
+.iconSuccess {
+  background-color: var(--vp-emerald-light);
+  color: var(--vp-emerald-dark);
+}
+
+.iconPrimary {
+  background-color: #eff6ff;
+  color: var(--vp-blue-primary);
+}
+
+.kpiValue {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--vp-navy-dark);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.35rem;
+}
+
+.kpiValueCritical {
+  color: var(--vp-danger);
+}
+
+.kpiFooter {
+  font-size: 0.75rem;
+  color: var(--vp-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+/* Barras de Progresso KPI */
+.progressTrack {
+  width: 100%;
+  height: 6px;
+  background-color: var(--vp-bg-muted);
+  border-radius: 9999px;
+  margin-top: 0.5rem;
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  background-color: var(--vp-emerald);
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.progressBarDouble {
+  background-color: var(--vp-blue-primary);
+}
+
+/* Gráficos e Seções Analíticas */
+.analyticsGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .analyticsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  background-color: var(--vp-bg-surface);
+  border: 1px solid var(--vp-border-subtle);
+  border-radius: var(--vp-radius-md);
+  padding: 1.25rem;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--vp-border-light);
+}
+
+.panelTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--vp-navy-dark);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.panelDesc {
+  font-size: 0.75rem;
+  color: var(--vp-text-muted);
+}
+
+/* Lista / Gráfico de Barras Elegante */
+.barList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.barItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.barMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.barLabel {
+  font-weight: 600;
+  color: var(--vp-text-headline);
+}
+
+.barValues {
+  font-weight: 600;
+  color: var(--vp-text-secondary);
+  font-size: 0.78rem;
+}
+
+.barTrack {
+  width: 100%;
+  height: 8px;
+  background-color: var(--vp-bg-subtle);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background-color: var(--vp-navy-dark);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+/* Status do Fluxo da Bancada */
+.flowList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.flowItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.75rem;
+  background-color: var(--vp-bg-main);
+  border: 1px solid var(--vp-border-light);
+  border-radius: var(--vp-radius-sm);
+  font-size: 0.82rem;
+}
+
+.flowLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--vp-text-headline);
+}
+
+.flowBadge {
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--vp-radius-sm);
+}
