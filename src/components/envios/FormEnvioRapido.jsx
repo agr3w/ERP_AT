@@ -16,6 +16,11 @@ import {
   FileText
 } from "lucide-react";
 import { createEnvio, updateEnvio } from "../../services/envioService";
+import {
+  MOTIVOS,
+  EQUIPAMENTOS_PADRAO,
+  formatarMacOuSerial
+} from "../../constants/envioConfig";
 import styles from "./FormEnvioRapido.module.css";
 
 const TIPOS_ENVIO = [
@@ -25,17 +30,6 @@ const TIPOS_ENVIO = [
   "Transportadora",
   "Motoboy",
   "Logística Reversa"
-];
-
-const MOTIVOS_COMUNS = [
-  "Reparo Concluído",
-  "Troca em Garantia",
-  "Envio de Peças",
-  "Devolução",
-  "Demonstração",
-  "Empréstimo Temporário",
-  "Retorno de Calibração",
-  "Descarte / Sucata"
 ];
 
 const INITIAL_STATE = {
@@ -50,7 +44,7 @@ const INITIAL_STATE = {
   linkChamado: "",
   tipoEnvio: "SEDEX",
   endereco: "",
-  motivo: "Reparo Concluído",
+  motivo: "Suporte",
   observacoes: "",
   doubleCheck: false,
   enviado: false
@@ -58,12 +52,19 @@ const INITIAL_STATE = {
 
 export default function FormEnvioRapido({ initialData = null, onSuccess = null, onCancel = null }) {
   const [formData, setFormData] = useState(INITIAL_STATE);
+  const [isCustomItem, setIsCustomItem] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
   const macInputRef = useRef(null);
 
   useEffect(() => {
     if (initialData) {
+      const isCustom = Boolean(
+        initialData.conteudo &&
+        !EQUIPAMENTOS_PADRAO.includes(initialData.conteudo)
+      );
+      setIsCustomItem(isCustom);
+
       setFormData({
         data: initialData.data || new Date().toISOString().split("T")[0],
         rastreio: initialData.rastreio || "",
@@ -76,12 +77,13 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
         linkChamado: initialData.linkChamado || "",
         tipoEnvio: initialData.tipoEnvio || "SEDEX",
         endereco: initialData.endereco || "",
-        motivo: initialData.motivo || "Reparo Concluído",
+        motivo: initialData.motivo || "Suporte",
         observacoes: initialData.observacoes || "",
         doubleCheck: Boolean(initialData.doubleCheck),
         enviado: Boolean(initialData.enviado)
       });
     } else {
+      setIsCustomItem(false);
       setFormData(INITIAL_STATE);
     }
   }, [initialData]);
@@ -104,6 +106,17 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
       ...prev,
       [name]: type === "checkbox" ? checked : value
     }));
+  };
+
+  const handleMacChange = (e) => {
+    const formatado = formatarMacOuSerial(e.target.value);
+    setFormData((prev) => ({ ...prev, mac: formatado }));
+  };
+
+  const handleToggleCustomItem = (e) => {
+    const checked = e.target.checked;
+    setIsCustomItem(checked);
+    setFormData((prev) => ({ ...prev, conteudo: "" }));
   };
 
   const preencherNfePendente = () => {
@@ -150,6 +163,7 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
         });
 
         // Mantém a data de hoje e reseta para o próximo item da bancada
+        setIsCustomItem(false);
         setFormData({
           ...INITIAL_STATE,
           data: formData.data || new Date().toISOString().split("T")[0]
@@ -177,9 +191,12 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
   };
 
   const handleReset = () => {
+    setIsCustomItem(false);
     setFormData(INITIAL_STATE);
     setStatusMessage({ type: "", text: "" });
   };
+
+  const motivoSelecionado = MOTIVOS[formData.motivo];
 
   return (
     <div className={styles.container}>
@@ -296,19 +313,49 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
 
         <div className={styles.grid}>
           <div className={`${styles.fieldGroup} ${styles.col6}`}>
-            <label className={styles.label} htmlFor="conteudo">
-              Conteúdo / Itens Enviados <span className={styles.required}>*</span>
-            </label>
-            <input
-              id="conteudo"
-              name="conteudo"
-              type="text"
-              placeholder="Ex: SmartPOS V2 + Fonte 9V + Bobinas"
-              className={styles.input}
-              value={formData.conteudo}
-              onChange={handleChange}
-              required
-            />
+            <div className={styles.labelRow}>
+              <label className={styles.label} htmlFor="conteudo">
+                Conteúdo / Itens Enviados <span className={styles.required}>*</span>
+              </label>
+              <label className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={isCustomItem}
+                  onChange={handleToggleCustomItem}
+                />
+                Outro / Não listado
+              </label>
+            </div>
+
+            {isCustomItem ? (
+              <input
+                id="conteudo"
+                name="conteudo"
+                type="text"
+                className={styles.input}
+                placeholder="Digite o nome do equipamento customizado..."
+                value={formData.conteudo}
+                onChange={handleChange}
+                required
+                autoFocus
+              />
+            ) : (
+              <select
+                id="conteudo"
+                name="conteudo"
+                className={styles.select}
+                value={formData.conteudo}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Selecione um equipamento cadastrado...</option>
+                {EQUIPAMENTOS_PADRAO.map((equip) => (
+                  <option key={equip} value={equip}>
+                    {equip}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className={`${styles.fieldGroup} ${styles.col6}`}>
@@ -320,11 +367,15 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
               name="mac"
               ref={macInputRef}
               type="text"
-              placeholder="AA:BB:CC:11:22:33 ou S/N do POS"
+              placeholder="Ex: b0cbd85fd1c2 ou SN123456"
               className={styles.input}
               value={formData.mac}
-              onChange={handleChange}
+              onChange={handleMacChange}
+              onBlur={handleMacChange}
             />
+            <small className={styles.helperText}>
+              Cole 12 caracteres hexadecimais para formatar MAC automaticamente em <code>xx:xx:xx:xx:xx:xx</code>.
+            </small>
           </div>
 
           <div className={`${styles.fieldGroup} ${styles.col6}`}>
@@ -363,19 +414,42 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
             <label className={styles.label} htmlFor="motivo">
               Motivo do Envio <span className={styles.required}>*</span>
             </label>
-            <select
-              id="motivo"
-              name="motivo"
-              className={styles.select}
-              value={formData.motivo}
-              onChange={handleChange}
-            >
-              {MOTIVOS_COMUNS.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+            <div className={styles.motivoSelectorWrapper}>
+              <select
+                id="motivo"
+                name="motivo"
+                className={styles.select}
+                value={formData.motivo}
+                onChange={handleChange}
+                style={{
+                  borderColor: motivoSelecionado ? motivoSelecionado.border : undefined,
+                  backgroundColor: motivoSelecionado ? motivoSelecionado.bg : undefined,
+                  color: motivoSelecionado ? motivoSelecionado.color : undefined,
+                  fontWeight: motivoSelecionado ? 600 : "normal"
+                }}
+                required
+              >
+                <option value="">Selecione o motivo...</option>
+                {Object.values(MOTIVOS).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+
+              {motivoSelecionado && (
+                <span
+                  className={styles.motivoBadge}
+                  style={{
+                    backgroundColor: motivoSelecionado.bg,
+                    color: motivoSelecionado.color,
+                    borderColor: motivoSelecionado.border
+                  }}
+                >
+                  {motivoSelecionado.label}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

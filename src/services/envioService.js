@@ -13,7 +13,7 @@ import {
 import { db } from "./firebaseConfig";
 
 const COLLECTION_NAME = "envios";
-const LOCAL_STORAGE_KEY = "vendpago_erp_envios_cache";
+const LOCAL_STORAGE_KEY = "vendpago_erp_envios_v3";
 
 /**
  * Calcula a diferença em dias entre a data de cadastro e a data atual para itens
@@ -88,7 +88,7 @@ function processarEnvioData(docId, rawData) {
     linkChamado: rawData.linkChamado || "",
     tipoEnvio: rawData.tipoEnvio || "SEDEX",
     endereco: rawData.endereco || "",
-    motivo: rawData.motivo || "Reparo Concluído",
+    motivo: rawData.motivo || "Suporte",
     observacoes: rawData.observacoes || "",
     doubleCheck: Boolean(rawData.doubleCheck),
     enviado: Boolean(rawData.enviado),
@@ -104,8 +104,8 @@ const SEED_ENVIOS = [
     id: "seed-1",
     data: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 3 dias atrás (> 48h)
     rastreio: "",
-    conteudo: "SmartPOS V2 + Fonte 9V",
-    mac: "98:F4:AB:12:34:56",
+    conteudo: "Roteador Wi-Fi 6 AX3000",
+    mac: "b0:cb:d8:5f:d1:c2",
     destinatario: "Filial SP - Central Logística",
     testado: true,
     nfe: "A ser informado",
@@ -113,7 +113,7 @@ const SEED_ENVIOS = [
     linkChamado: "https://vendpago.atlassian.net/browse/AT-10842",
     tipoEnvio: "SEDEX",
     endereco: "Av. Paulista, 1000 - Bela Vista, São Paulo - SP",
-    motivo: "Troca em Garantia",
+    motivo: "Locação",
     observacoes: "Equipamento testado e aprovado. Aguardando emissão da NF fiscal pelo faturamento.",
     doubleCheck: true,
     enviado: false,
@@ -123,8 +123,8 @@ const SEED_ENVIOS = [
     id: "seed-2",
     data: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 1 dia atrás (< 48h)
     rastreio: "",
-    conteudo: "Terminal MP35P",
-    mac: "AA:11:BB:22:CC:33",
+    conteudo: "ONU GPON Wi-Fi",
+    mac: "aa:11:bb:22:cc:33",
     destinatario: "Operação Curitiba",
     testado: true,
     nfe: "A ser informado",
@@ -132,8 +132,8 @@ const SEED_ENVIOS = [
     linkChamado: "https://vendpago.atlassian.net/browse/AT-10855",
     tipoEnvio: "PAC",
     endereco: "Rua Marechal Deodoro, 450 - Centro, Curitiba - PR",
-    motivo: "Reparo Concluído",
-    observacoes: "Troca de display e bateria. Pacote pronto na bancada 3.",
+    motivo: "Suporte",
+    observacoes: "Troca preventiva. Pacote pronto na bancada 3.",
     doubleCheck: false,
     enviado: false,
     criadoEm: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
@@ -142,8 +142,8 @@ const SEED_ENVIOS = [
     id: "seed-3",
     data: new Date().toISOString().split("T")[0], // Hoje
     rastreio: "QB987654321BR",
-    conteudo: "Kit Cabos de Alimentação + Pinpad",
-    mac: "70:85:C2:90:12:FF",
+    conteudo: "Switch Gigabit 24 Portas",
+    mac: "70:85:c2:90:12:ff",
     destinatario: "Tech Solutions Campinas",
     testado: true,
     nfe: "NF-009481",
@@ -151,8 +151,8 @@ const SEED_ENVIOS = [
     linkChamado: "https://vendpago.atlassian.net/browse/AT-10860",
     tipoEnvio: "SEDEX",
     endereco: "Rua Barão de Jaguara, 789 - Centro, Campinas - SP",
-    motivo: "Envio de Peças",
-    observacoes: "Despacho prioritário para cliente VIP.",
+    motivo: "Comercial",
+    observacoes: "Despacho prioritário para ativação de cliente VIP.",
     doubleCheck: true,
     enviado: true,
     criadoEm: new Date().toISOString()
@@ -161,8 +161,8 @@ const SEED_ENVIOS = [
     id: "seed-4",
     data: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 4 dias atrás (> 48h)
     rastreio: "",
-    conteudo: "Placa Mãe POS Android",
-    mac: "E4:5F:01:88:99:AA",
+    conteudo: "Rádio PTP / PTMP 5GHz",
+    mac: "e4:5f:01:88:99:aa",
     destinatario: "Bancada Terceirizada BH",
     testado: true,
     nfe: "A ser informado",
@@ -170,7 +170,7 @@ const SEED_ENVIOS = [
     linkChamado: "https://vendpago.atlassian.net/browse/AT-10820",
     tipoEnvio: "Transportadora",
     endereco: "Av. Afonso Pena, 1500 - Savassi, Belo Horizonte - MG",
-    motivo: "Devolução",
+    motivo: "Manutenção",
     observacoes: "Cobrar urgência do time fiscal referente à NF de remessa.",
     doubleCheck: true,
     enviado: false,
@@ -180,8 +180,8 @@ const SEED_ENVIOS = [
     id: "seed-5",
     data: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     rastreio: "BR849201948",
-    conteudo: "POS D210 + Carregador",
-    mac: "C8:2A:14:55:66:77",
+    conteudo: "Switch Gigabit 8 Portas",
+    mac: "c8:2a:14:55:66:77",
     destinatario: "Retirada em Mãos - Técnico Carlos",
     testado: true,
     nfe: "NF-009450",
@@ -189,7 +189,7 @@ const SEED_ENVIOS = [
     linkChamado: "https://vendpago.atlassian.net/browse/AT-10833",
     tipoEnvio: "Retirada",
     endereco: "Balcão Assistência Técnica VendPago - Sede",
-    motivo: "Reparo Concluído",
+    motivo: "Suporte",
     observacoes: "Retirado no balcão da assistência.",
     doubleCheck: true,
     enviado: true,

@@ -25,7 +25,24 @@ import {
   updateEnvio,
   deleteEnvio
 } from "../../services/envioService";
+import { MOTIVOS } from "../../constants/envioConfig";
 import styles from "./BacklogEnvios.module.css";
+
+const getBadgeStyle = (motivoNome) => {
+  const config = MOTIVOS[motivoNome];
+  if (!config) {
+    return {
+      backgroundColor: "#f1f5f9",
+      color: "#475569",
+      borderColor: "#cbd5e1"
+    };
+  }
+  return {
+    backgroundColor: config.bg,
+    color: config.color,
+    borderColor: config.border
+  };
+};
 
 export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = null }) {
   const [activeTab, setActiveTab] = useState("pendentes"); // "pendentes" | "concluidos"
@@ -338,6 +355,7 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
               <th className={styles.th}>Data</th>
               <th className={styles.th}>Chamado</th>
               <th className={styles.th}>Conteúdo / MAC</th>
+              <th className={styles.th}>Motivo</th>
               <th className={styles.th}>Destinatário</th>
               <th className={styles.th}>Tipo / Rastreio</th>
               <th className={styles.th}>Status NF-e</th>
@@ -348,13 +366,13 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="8" style={{ textAlign: "center", padding: "2.5rem" }}>
+                <td colSpan="9" style={{ textAlign: "center", padding: "2.5rem" }}>
                   Carregando registros de envios...
                 </td>
               </tr>
             ) : listaExibida.length === 0 ? (
               <tr>
-                <td colSpan="8" className={styles.emptyState}>
+                <td colSpan="9" className={styles.emptyState}>
                   <Inbox className={styles.emptyIcon} />
                   <p>Nenhum registro encontrado para este filtro.</p>
                 </td>
@@ -394,18 +412,25 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                       <div style={{ fontWeight: 600, color: "var(--vp-navy-dark)" }}>
                         {item.conteudo}
                       </div>
-                      {item.mac && (
-                        <div style={{ fontSize: "0.75rem", color: "var(--vp-text-muted)" }}>
-                          MAC: {item.mac}
+                      {item.mac ? (
+                        <div style={{ marginTop: "3px" }}>
+                          <code className={styles.macCode}>{item.mac}</code>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: "0.75rem", color: "var(--vp-text-dim)" }}>
+                          -
                         </div>
                       )}
                     </td>
 
                     <td className={styles.td}>
-                      <div>{item.destinatario}</div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--vp-text-muted)" }}>
-                        {item.motivo}
-                      </div>
+                      <span className={styles.badgeMotivo} style={getBadgeStyle(item.motivo)}>
+                        {item.motivo || "Indefinido"}
+                      </span>
+                    </td>
+
+                    <td className={styles.td}>
+                      <div style={{ fontWeight: 500 }}>{item.destinatario}</div>
                     </td>
 
                     <td className={styles.td}>
@@ -665,7 +690,9 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                 </div>
                 <div>
                   <span style={{ color: "var(--vp-text-muted)", fontSize: "0.75rem" }}>MAC / Serial:</span>
-                  <div style={{ fontFamily: "monospace" }}>{itemDetalhes.mac || "Não informado"}</div>
+                  <div style={{ marginTop: "2px" }}>
+                    <code className={styles.macCode}>{itemDetalhes.mac || "Não informado"}</code>
+                  </div>
                 </div>
 
                 <div>
@@ -674,7 +701,11 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                 </div>
                 <div>
                   <span style={{ color: "var(--vp-text-muted)", fontSize: "0.75rem" }}>Motivo:</span>
-                  <div>{itemDetalhes.motivo}</div>
+                  <div style={{ marginTop: "2px" }}>
+                    <span className={styles.badgeMotivo} style={getBadgeStyle(itemDetalhes.motivo)}>
+                      {itemDetalhes.motivo || "Indefinido"}
+                    </span>
+                  </div>
                 </div>
 
                 <div>
