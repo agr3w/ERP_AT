@@ -244,6 +244,21 @@
   background-color: #fceeed;
 }
 
+/* Card / Linha com NF-e anexada aguardando apenas código de rastreio */
+.trComNfe {
+  background-color: #ebf1f8 !important; /* Tonalidade levemente mais escura azulada */
+  border-left: 4px solid var(--vp-blue-primary) !important;
+}
+
+.trComNfe:hover {
+  background-color: #e0eaf4 !important;
+}
+
+.trDragging {
+  opacity: 0.4;
+  background-color: #dbeafe !important;
+}
+
 .td {
   padding: 0.75rem 0.9rem;
   color: var(--vp-text-body);
@@ -498,6 +513,19 @@
   display: inline-block;
 }
 
+.badgeMacsCount {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #4338ca;
+  background-color: #e0e7ff;
+  border: 1px solid #c7d2fe;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
 .btnExportCorreios {
   display: inline-flex;
   align-items: center;
@@ -519,3 +547,456 @@
   background-color: var(--vp-navy-dark);
   border-color: var(--vp-navy-dark);
 }
+
+.btnCopiarErp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 26px;
+  padding: 0 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: var(--vp-blue-primary);
+  border-radius: var(--vp-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btnCopiarErp:hover {
+  background-color: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.btnCopiarSucesso {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 26px;
+  padding: 0 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+  border-radius: var(--vp-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btnCopyTable {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: var(--vp-text-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnCopyTable:hover {
+  background-color: #e0e7ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
+}
+
+/* Frete & Cotação */
+.badgeFrete {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: var(--vp-radius-sm);
+  background-color: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.freteBox {
+  background-color: var(--vp-bg-main);
+  border: 1px solid var(--vp-border-light);
+  border-radius: var(--vp-radius-sm);
+  padding: 0.75rem 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.freteHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.badgeFreteOrigem {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #1d4ed8;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--vp-radius-sm);
+}
+
+.freteActionsRow {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.btnSimularCorreiosModal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 32px;
+  padding: 0 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background-color: #eff6ff;
+  border: 1px solid #93c5fd;
+  color: #1d4ed8;
+  border-radius: var(--vp-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btnSimularCorreiosModal:hover {
+  background-color: #dbeafe;
+  border-color: #60a5fa;
+  color: #1e40af;
+}
+
+.btnCopiarBitrixModal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 32px;
+  padding: 0 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  border-radius: var(--vp-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btnCopiarBitrixModal:hover {
+  background-color: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.btnCopiarBitrixSucesso {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 32px;
+  padding: 0 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background-color: #dcfce7;
+  border: 1px solid #86efac;
+  color: #166534;
+  border-radius: var(--vp-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Barra de Ordenação Rápida da Bancada
+   ========================================================================== */
+.sortBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.85rem;
+  background-color: var(--vp-bg-subtle);
+  border: 1px solid var(--vp-border-subtle);
+  border-radius: var(--vp-radius-sm);
+  margin-bottom: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.sortBarTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--vp-text-secondary);
+}
+
+.sortButtons {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.btnSort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: var(--vp-bg-surface);
+  border: 1px solid var(--vp-border-default);
+  border-radius: var(--vp-radius-sm);
+  color: var(--vp-text-secondary);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.btnSort:hover {
+  background-color: #f1f5f9;
+  border-color: var(--vp-border-dark);
+  color: var(--vp-navy-dark);
+}
+
+.btnSortActive {
+  background-color: var(--vp-navy-dark);
+  border-color: var(--vp-navy-dark);
+  color: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(0, 30, 64, 0.15);
+}
+
+.btnSortActive svg {
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Coluna de Arrastar / Organizar (Drag and Drop)
+   ========================================================================== */
+.thDrag {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  padding: 0.75rem 0.25rem;
+  text-align: center;
+  border-bottom: 1px solid var(--vp-border-subtle);
+  background-color: var(--vp-bg-subtle);
+}
+
+.tdDrag {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  padding: 0.5rem 0.25rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.dragHandleWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.dragHandle {
+  cursor: grab;
+  color: var(--vp-text-subtle);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 3px;
+  transition: all 0.12s ease;
+}
+
+.dragHandle:hover {
+  color: var(--vp-navy-dark);
+  background-color: #e2e8f0;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.miniArrows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.btnMiniArrow {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--vp-text-muted);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: color 0.1s ease;
+}
+
+.btnMiniArrow:hover:not(:disabled) {
+  color: var(--vp-navy-dark);
+}
+
+.btnMiniArrow:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Botões Interativos de NF-e
+   ========================================================================== */
+.btnNfePendente {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: var(--vp-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btnNfeNeutral {
+  background-color: #f1f5f9;
+  border: 1px dashed #94a3b8;
+  color: #475569;
+}
+
+.btnNfeNeutral:hover {
+  background-color: #e2e8f0;
+  border-color: #64748b;
+  color: var(--vp-navy-dark);
+  transform: translateY(-1px);
+}
+
+.btnNfeWarning {
+  background-color: var(--vp-warning-light);
+  border: 1px solid var(--vp-warning-border);
+  color: var(--vp-warning);
+}
+
+.btnNfeWarning:hover {
+  background-color: #fef08a;
+  border-color: #eab308;
+  transform: translateY(-1px);
+}
+
+.btnNfeDanger {
+  background-color: var(--vp-danger-light);
+  border: 1px solid var(--vp-danger-border);
+  color: var(--vp-danger);
+}
+
+.btnNfeDanger:hover {
+  background-color: #fee2e2;
+  border-color: #ef4444;
+  transform: translateY(-1px);
+}
+
+.btnNfeAnexada {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.5rem;
+  font-family: monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--vp-navy-dark);
+  background-color: #ffffff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--vp-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnNfeAnexada:hover {
+  background-color: #eff6ff;
+  border-color: var(--vp-blue-primary);
+  box-shadow: 0 1px 3px rgba(0, 86, 181, 0.15);
+}
+
+.btnNfeTag {
+  font-family: var(--vp-font-sans, system-ui, sans-serif);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--vp-blue-primary);
+  background-color: #dbeafe;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+}
+
+/* ==========================================================================
+   Inputs e Ações do Micro-Modal de NF-e
+   ========================================================================== */
+.modalInput {
+  height: 38px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--vp-border-default);
+  border-radius: 4px;
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.modalInput:focus {
+  border-color: var(--vp-blue-primary);
+  box-shadow: 0 0 0 2px rgba(0, 86, 181, 0.15);
+}
+
+.btnSecondary {
+  height: 36px;
+  padding: 0 1rem;
+  border: 1px solid var(--vp-border-default);
+  border-radius: 4px;
+  background: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--vp-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btnSecondary:hover {
+  background: var(--vp-bg-subtle);
+}
+
+.btnPrimary {
+  height: 36px;
+  padding: 0 1.25rem;
+  border: none;
+  border-radius: 4px;
+  background: var(--vp-navy-dark);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background 0.15s ease;
+}
+
+.btnPrimary:hover {
+  background: var(--vp-blue-primary);
+}
+
+

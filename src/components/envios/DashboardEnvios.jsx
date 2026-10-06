@@ -1,327 +1,434 @@
-import React, { useState, useEffect } from "react";
+// src/components/envios/DashboardEnvios.jsx
+import React, { useState, useEffect, useMemo } from "react";
 import {
-  BarChart3,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from "chart.js";
+import { Line, Bar, Doughnut } from "react-chartjs-2";
+import {
   TrendingUp,
-  Clock,
-  AlertTriangle,
-  ShieldCheck,
-  CheckCircle2,
-  Calendar,
-  Layers,
+  BarChart3,
   Truck,
+  Clock,
   RefreshCw,
-  FileWarning,
-  Activity
+  Package,
+  Layers,
+  PieChart,
+  Activity,
+  Plus,
+  Inbox,
+  AlertCircle
 } from "lucide-react";
-import { getMetrics } from "../../services/envioService";
+import { getAllEnvios } from "../../services/envioService";
+import { processarAnalyticsEnvios } from "../../services/envioAnalytics";
 import styles from "./DashboardEnvios.module.css";
 
-export default function DashboardEnvios({ onNavigateToBacklog = null }) {
-  const [metrics, setMetrics] = useState(null);
+// Registro dos módulos do Chart.js
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
+
+// Opções corporativas comuns para os gráficos (VendPago Design System)
+const commonChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: {
+    duration: 400
+  },
+  plugins: {
+    legend: {
+      position: "bottom",
+      labels: {
+        color: "#475569",
+        font: {
+          size: 11,
+          weight: "600",
+          family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        },
+        boxWidth: 12,
+        padding: 14
+      }
+    },
+    tooltip: {
+      backgroundColor: "#001e40",
+      titleColor: "#ffffff",
+      bodyColor: "#ffffff",
+      padding: 10,
+      cornerRadius: 4,
+      displayColors: true,
+      titleFont: { size: 12, weight: "bold" },
+      bodyFont: { size: 11 }
+    }
+  },
+  scales: {
+    x: {
+      grid: {
+        color: "#f1f5f9"
+      },
+      ticks: {
+        color: "#64748b",
+        font: { size: 11 }
+      }
+    },
+    y: {
+      grid: {
+        color: "#f1f5f9"
+      },
+      ticks: {
+        color: "#64748b",
+        font: { size: 11 },
+        precision: 0
+      },
+      beginAtZero: true
+    }
+  }
+};
+
+export default function DashboardEnvios({ onNavigateToNew = null, onNavigateToBacklog = null }) {
+  const [enviosRaw, setEnviosRaw] = useState([]);
+  const [filtroTempo, setFiltroTempo] = useState("mes"); // "7dias" | "mes" | "ano" | "geral"
   const [loading, setLoading] = useState(true);
 
-  const carregarMetricas = async () => {
+  const carregarDados = async () => {
     setLoading(true);
     try {
-      const data = await getMetrics();
-      setMetrics(data);
+      const dados = await getAllEnvios();
+      setEnviosRaw(dados);
     } catch (err) {
-      console.error("Erro ao carregar métricas operacionais:", err);
+      console.error("Erro ao carregar dados do dashboard:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    carregarMetricas();
+    carregarDados();
   }, []);
 
-  if (loading && !metrics) {
-    return (
-      <div className={styles.container} style={{ textAlign: "center", padding: "3rem" }}>
-        <RefreshCw size={24} className="spin" style={{ color: "var(--vp-blue-primary)" }} />
-        <p style={{ marginTop: "0.5rem", color: "var(--vp-text-muted)" }}>
-          Calculando métricas operacionais de envios...
-        </p>
-      </div>
-    );
-  }
+  // Processa as métricas analíticas e datasets do Chart.js
+  const analytics = useMemo(() => {
+    return processarAnalyticsEnvios(enviosRaw, filtroTempo);
+  }, [enviosRaw, filtroTempo]);
 
-  const {
-    totalGeral = 0,
-    totalPendentes = 0,
-    totalConcluidos = 0,
-    totalEnviosNoMes = 0,
-    cadenciaDiariaMedia = 0,
-    caixasTravadasNfe = 0,
-    caixasAtraso48h = 0,
-    indiceTestados = 0,
-    indiceDoubleCheck = 0,
-    motivosRanking = [],
-    tipoEnvioRanking = [],
-    periodoReferencia = ""
-  } = metrics || {};
+  // Opções customizadas para gráfico horizontal de top equipamentos
+  const horizontalBarOptions = useMemo(() => ({
+    ...commonChartOptions,
+    indexAxis: "y",
+    plugins: {
+      ...commonChartOptions.plugins,
+      legend: { display: false }
+    },
+    scales: {
+      x: {
+        ...commonChartOptions.scales.x,
+        beginAtZero: true,
+        ticks: { precision: 0 }
+      },
+      y: {
+        ...commonChartOptions.scales.y,
+        grid: { display: false },
+        ticks: { color: "#001e40", font: { weight: "600", size: 11 } }
+      }
+    }
+  }), []);
+
+  // Opções para Doughnut de motivos
+  const doughnutOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 400 },
+    cutout: "68%",
+    plugins: {
+      ...commonChartOptions.plugins,
+      legend: {
+        position: "bottom",
+        labels: {
+          color: "#475569",
+          font: { size: 11, weight: "600" },
+          padding: 12,
+          boxWidth: 12
+        }
+      }
+    }
+  }), []);
+
+  const totalGeralNoPeriodo = analytics.totalPacotes;
 
   return (
     <div className={styles.container}>
-      {/* Cabeçalho */}
-      <div className={styles.header}>
+      {/* Cabeçalho do Painel */}
+      <header className={styles.header}>
         <div className={styles.titleArea}>
           <Activity className={styles.titleIcon} />
           <div>
-            <h2 className={styles.title}>Painel de Indicadores & Gargalos de Envios</h2>
+            <h2 className={styles.title}>Painel Analítico de Envios & Gestão AT</h2>
             <p className={styles.subtitle}>
-              Métricas de cadência, tempo de espera fiscal e controle de qualidade da Assistência Técnica
+              Monitoramento executivo de cadência, tempo de espera, motivos e equipamentos demandados
             </p>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-          <div className={styles.periodBadge}>
-            <Calendar size={14} />
-            <span>{periodoReferencia}</span>
+        <div className={styles.headerControls}>
+          {/* Seletor de Período Temporal */}
+          <div className={styles.filterBar}>
+            <button
+              type="button"
+              className={`${styles.filterTab} ${filtroTempo === "7dias" ? styles.filterTabActive : ""}`}
+              onClick={() => setFiltroTempo("7dias")}
+            >
+              Últimos 7 Dias
+            </button>
+            <button
+              type="button"
+              className={`${styles.filterTab} ${filtroTempo === "mes" ? styles.filterTabActive : ""}`}
+              onClick={() => setFiltroTempo("mes")}
+            >
+              Mês Atual
+            </button>
+            <button
+              type="button"
+              className={`${styles.filterTab} ${filtroTempo === "ano" ? styles.filterTabActive : ""}`}
+              onClick={() => setFiltroTempo("ano")}
+            >
+              Ano Atual
+            </button>
+            <button
+              type="button"
+              className={`${styles.filterTab} ${filtroTempo === "geral" ? styles.filterTabActive : ""}`}
+              onClick={() => setFiltroTempo("geral")}
+            >
+              Histórico Geral
+            </button>
           </div>
 
           <button
             type="button"
-            className={styles.periodBadge}
-            onClick={carregarMetricas}
-            style={{ cursor: "pointer", background: "var(--vp-bg-subtle)" }}
-            title="Atualizar indicadores"
+            className={styles.btnRefresh}
+            onClick={carregarDados}
+            title="Recarregar dados"
           >
             <RefreshCw size={14} className={loading ? "spin" : ""} />
             <span>Atualizar</span>
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Grid de Cards de KPI */}
-      <div className={styles.kpiGrid}>
-        {/* KPI 1: Total de Envios no Mês */}
+      {/* Cards de KPIs Executivos */}
+      <section className={styles.kpiGrid}>
+        {/* KPI 1: Total de Pacotes & Unidades */}
         <div className={styles.kpiCard}>
           <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Envios no Mês</span>
+            <span className={styles.kpiLabel}>Volume de Envios</span>
             <div className={`${styles.kpiIconWrapper} ${styles.iconPrimary}`}>
-              <Truck size={18} />
+              <Truck size={17} />
             </div>
           </div>
-          <div className={styles.kpiValue}>{totalEnviosNoMes}</div>
+          <div className={styles.kpiValue}>{analytics.totalPacotes}</div>
           <div className={styles.kpiFooter}>
-            <span>Despachados neste ciclo</span>
-            <span style={{ fontWeight: 600 }}>{totalConcluidos} concluídos ({totalGeral} total)</span>
-          </div>
-        </div>
-
-        {/* KPI 2: Cadência Diária Média */}
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Cadência Diária Média</span>
-            <div className={`${styles.kpiIconWrapper} ${styles.iconSuccess}`}>
-              <TrendingUp size={18} />
-            </div>
-          </div>
-          <div className={styles.kpiValue}>{cadenciaDiariaMedia}</div>
-          <div className={styles.kpiFooter}>
-            <span>Envios / dia de operação</span>
-            <span style={{ color: "var(--vp-emerald-dark)", fontWeight: 600 }}>Média Ativa</span>
-          </div>
-        </div>
-
-        {/* KPI 3: Caixas Travadas Aguardando NF-e (Gargalo Principal) */}
-        <div
-          className={`${styles.kpiCard} ${
-            caixasAtraso48h > 0 ? styles.kpiCardCritical : styles.kpiCardWarning
-          }`}
-          style={{ cursor: onNavigateToBacklog ? "pointer" : "default" }}
-          onClick={onNavigateToBacklog ? () => onNavigateToBacklog(true) : undefined}
-          title="Clique para ir à fila de pendentes com alerta"
-        >
-          <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Aguardando NF-e</span>
-            <div
-              className={`${styles.kpiIconWrapper} ${
-                caixasAtraso48h > 0 ? styles.iconCritical : styles.iconWarning
-              }`}
-            >
-              {caixasAtraso48h > 0 ? <AlertTriangle size={18} /> : <Clock size={18} />}
-            </div>
-          </div>
-          <div
-            className={`${styles.kpiValue} ${
-              caixasAtraso48h > 0 ? styles.kpiValueCritical : ""
-            }`}
-          >
-            {caixasTravadasNfe}
-          </div>
-          <div className={styles.kpiFooter}>
-            {caixasAtraso48h > 0 ? (
-              <span style={{ color: "var(--vp-danger)", fontWeight: 700 }}>
-                {caixasAtraso48h} caixas travadas há &gt; 48h
-              </span>
-            ) : (
-              <span>Nenhum atraso crítico &gt; 48h</span>
-            )}
-            <span style={{ fontSize: "0.7rem", textDecoration: "underline" }}>Ver fila</span>
-          </div>
-        </div>
-
-        {/* KPI 4: Qualidade Bancada (Testados / Double Check) */}
-        <div className={`${styles.kpiCard} ${styles.kpiCardSuccess}`}>
-          <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Qualidade na Bancada</span>
-            <div className={`${styles.kpiIconWrapper} ${styles.iconSuccess}`}>
-              <ShieldCheck size={18} />
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
-            <span className={styles.kpiValue}>{indiceTestados}%</span>
-            <span style={{ fontSize: "0.85rem", color: "var(--vp-text-muted)" }}>
-              / {indiceDoubleCheck}% DC
+            <span>Pacotes registrados</span>
+            <span style={{ fontWeight: 700, color: "var(--vp-navy-dark)" }}>
+              {analytics.totalEquipamentosUnidades} itens/peças
             </span>
           </div>
+        </div>
+
+        {/* KPI 2: Cadência de Expedição */}
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiTop}>
+            <span className={styles.kpiLabel}>Status da Esteira</span>
+            <div className={`${styles.kpiIconWrapper} ${styles.iconSuccess}`}>
+              <TrendingUp size={17} />
+            </div>
+          </div>
+          <div className={styles.kpiValue}>{analytics.totalConcluidos}</div>
           <div className={styles.kpiFooter}>
-            <div style={{ width: "100%" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
-                <span>Testado: {indiceTestados}%</span>
-                <span>Double Check: {indiceDoubleCheck}%</span>
-              </div>
-              <div className={styles.progressTrack}>
-                <div
-                  className={styles.progressBar}
-                  style={{ width: `${Math.min(100, indiceTestados)}%` }}
-                />
-              </div>
-            </div>
+            <span style={{ color: "var(--vp-emerald-dark)", fontWeight: 700 }}>
+              Despachados / Concluídos
+            </span>
+            <span style={{ color: "var(--vp-warning)", fontWeight: 600 }}>
+              {analytics.totalPendentes} na bancada
+            </span>
           </div>
         </div>
-      </div>
 
-      {/* Seções Analíticas: Motivos e Modalidades */}
-      <div className={styles.analyticsGrid}>
-        {/* Painel 1: Motivos com Maior Volume de Saídas */}
-        <div className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <h3 className={styles.panelTitle}>
-              <BarChart3 size={16} /> Motivos com Maior Volume de Saídas
-            </h3>
-            <span className={styles.panelDesc}>Distribuição percentual e contagem</span>
+        {/* KPI 3: Lead Time Médio de Envio */}
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiTop}>
+            <span className={styles.kpiLabel}>Tempo Médio de Espera</span>
+            <div className={`${styles.kpiIconWrapper} ${styles.iconWarning}`}>
+              <Clock size={17} />
+            </div>
+          </div>
+          <div className={styles.kpiValue}>
+            {analytics.mediaLeadTimeDias} <span style={{ fontSize: "1rem", fontWeight: 600 }}>dias</span>
+          </div>
+          <div className={styles.kpiFooter}>
+            <span>Média da bancada ao despacho</span>
+            <span style={{ color: analytics.gargaloCritico > 0 ? "var(--vp-danger)" : "var(--vp-emerald-dark)", fontWeight: 700 }}>
+              {analytics.gargaloCritico > 0 ? `${analytics.gargaloCritico} travados > 72h` : "Fluxo ágil"}
+            </span>
+          </div>
+        </div>
+
+        {/* KPI 4: Equipamento Mais Demandado */}
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiTop}>
+            <span className={styles.kpiLabel}>Equipamento Campeão</span>
+            <div className={`${styles.kpiIconWrapper} ${styles.iconPrimary}`}>
+              <Package size={17} />
+            </div>
+          </div>
+          <div className={`${styles.kpiValue} ${styles.kpiValueHighlight}`} title={analytics.equipamentoTop}>
+            {analytics.equipamentoTop}
+          </div>
+          <div className={styles.kpiFooter}>
+            <span>Maior volume de saída</span>
+            <span style={{ fontWeight: 600, color: "var(--vp-blue-primary)" }}>Líder do período</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Seção Principal de Gráficos (React Chart.js 2) */}
+      {totalGeralNoPeriodo === 0 ? (
+        <div className={styles.emptyStateBanner}>
+          <Inbox className={styles.emptyIcon} />
+          <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--vp-navy-dark)" }}>
+            Nenhum envio registrado no período selecionado
+          </h3>
+          <p style={{ maxWidth: "450px", margin: "0.4rem auto 0", fontSize: "0.82rem" }}>
+            Alterne o filtro de período acima (ex: <em>Histórico Geral</em>) ou registre novas saídas de bancada para visualizar as curvas e comparativos.
+          </p>
+          {onNavigateToNew && (
+            <button type="button" className={styles.emptyBtnAction} onClick={onNavigateToNew}>
+              <Plus size={15} /> Cadastrar Envio na Bancada
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className={styles.chartsGrid}>
+          {/* GRÁFICO 1: Evolução Temporal (Volume por Dia / Semana / Mês / Ano) */}
+          <div className={`${styles.chartCard} ${styles.colFull}`}>
+            <div className={styles.chartHeader}>
+              <div className={styles.chartTitleWrapper}>
+                <h3 className={styles.chartTitle}>
+                  <TrendingUp size={16} color="var(--vp-blue-primary)" />
+                  Evolução da Cadência de Envios
+                </h3>
+                <span className={styles.chartSubtitle}>
+                  Volume cronológico de pacotes registrados vs. despachados conforme o ciclo ({filtroTempo.toUpperCase()})
+                </span>
+              </div>
+              <span className={styles.chartBadge}>
+                {filtroTempo === "7dias" ? "Visão Diária Recente" : filtroTempo === "mes" ? "Evolução do Mês" : filtroTempo === "ano" ? "Visão Mensal do Ano" : "Histórico Consolidado"}
+              </span>
+            </div>
+            <div className={styles.chartCanvasBoxLarge}>
+              <Line data={analytics.chartEvolucaoTemporal} options={commonChartOptions} />
+            </div>
           </div>
 
-          <div className={styles.barList}>
-            {motivosRanking.length === 0 ? (
-              <p style={{ color: "var(--vp-text-muted)", fontSize: "0.85rem" }}>
-                Sem dados suficientes de motivos registrados.
-              </p>
-            ) : (
-              motivosRanking.map((item, idx) => (
-                <div key={item.motivo} className={styles.barItem}>
-                  <div className={styles.barMeta}>
-                    <span className={styles.barLabel}>{item.motivo}</span>
-                    <span className={styles.barValues}>
-                      {item.quantidade} envio(s) ({item.percentual}%)
-                    </span>
-                  </div>
-                  <div className={styles.barTrack}>
-                    <div
-                      className={styles.barFill}
-                      style={{
-                        width: `${Math.min(100, item.percentual)}%`,
-                        backgroundColor:
-                          idx === 0
-                            ? "var(--vp-navy-dark)"
-                            : idx === 1
-                            ? "var(--vp-blue-primary)"
-                            : "var(--vp-blue-medium)"
-                      }}
-                    />
-                  </div>
+          {/* GRÁFICO 2: Top Equipamentos Mais Enviados */}
+          <div className={`${styles.chartCard} ${styles.colHalf}`}>
+            <div className={styles.chartHeader}>
+              <div className={styles.chartTitleWrapper}>
+                <h3 className={styles.chartTitle}>
+                  <BarChart3 size={16} color="var(--vp-navy-dark)" />
+                  Equipamentos Mais Enviados
+                </h3>
+                <span className={styles.chartSubtitle}>
+                  Ranking de modelos de terminais e kits mais demandados pela operação
+                </span>
+              </div>
+              <span className={styles.chartBadge}>Top Saídas</span>
+            </div>
+            <div className={styles.chartCanvasBoxMedium}>
+              {analytics.chartTopEquipamentos.labels.length > 0 ? (
+                <Bar data={analytics.chartTopEquipamentos} options={horizontalBarOptions} />
+              ) : (
+                <div className={styles.emptyChartMessage}>
+                  <AlertCircle size={20} />
+                  <span>Nenhum equipamento catalogado neste ciclo.</span>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Painel 2: Status do Fluxo Operacional & Modalidades */}
-        <div className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <h3 className={styles.panelTitle}>
-              <Layers size={16} /> Fluxo de Operação
-            </h3>
-            <span className={styles.panelDesc}>Estado atual</span>
+              )}
+            </div>
           </div>
 
-          <div className={styles.flowList}>
-            <div className={styles.flowItem}>
-              <div className={styles.flowLabel}>
-                <Clock size={16} color="var(--vp-warning)" />
-                <span>Na Bancada (Pendentes)</span>
+          {/* GRÁFICO 3: Tempo de Espera até Despacho (Lead Time & Gargalos) */}
+          <div className={`${styles.chartCard} ${styles.colHalf}`}>
+            <div className={styles.chartHeader}>
+              <div className={styles.chartTitleWrapper}>
+                <h3 className={styles.chartTitle}>
+                  <Clock size={16} color="var(--vp-warning)" />
+                  Tempo de Espera até Despacho (Lead Time)
+                </h3>
+                <span className={styles.chartSubtitle}>
+                  Distribuição de pacotes por dias de esteira da montagem até a expedição
+                </span>
               </div>
-              <span
-                className={styles.flowBadge}
-                style={{
-                  backgroundColor: "var(--vp-warning-light)",
-                  color: "var(--vp-warning)"
-                }}
-              >
-                {totalPendentes}
-              </span>
+              <span className={styles.chartBadge}>Gargalos Operacionais</span>
             </div>
-
-            <div className={styles.flowItem}>
-              <div className={styles.flowLabel}>
-                <FileWarning size={16} color="var(--vp-danger)" />
-                <span>Gargalo Fiscal (&gt;48h)</span>
-              </div>
-              <span
-                className={styles.flowBadge}
-                style={{
-                  backgroundColor: "var(--vp-danger-light)",
-                  color: "var(--vp-danger)"
-                }}
-              >
-                {caixasAtraso48h}
-              </span>
+            <div className={styles.chartCanvasBoxMedium}>
+              <Bar data={analytics.chartTempoEspera} options={commonChartOptions} />
             </div>
+          </div>
 
-            <div className={styles.flowItem}>
-              <div className={styles.flowLabel}>
-                <CheckCircle2 size={16} color="var(--vp-emerald)" />
-                <span>Despachados / Concluídos</span>
+          {/* GRÁFICO 4: Distribuição por Motivo de Envio */}
+          <div className={`${styles.chartCard} ${styles.colHalf}`}>
+            <div className={styles.chartHeader}>
+              <div className={styles.chartTitleWrapper}>
+                <h3 className={styles.chartTitle}>
+                  <PieChart size={16} color="var(--vp-blue-primary)" />
+                  Distribuição por Motivo de Envio
+                </h3>
+                <span className={styles.chartSubtitle}>
+                  Locação, Comercial, Suporte e Manutenção da Assistência Técnica
+                </span>
               </div>
-              <span
-                className={styles.flowBadge}
-                style={{
-                  backgroundColor: "var(--vp-emerald-light)",
-                  color: "var(--vp-emerald-dark)"
-                }}
-              >
-                {totalConcluidos}
-              </span>
+              <span className={styles.chartBadge}>Motivos AT</span>
             </div>
+            <div className={styles.chartCanvasBoxDoughnut}>
+              <Doughnut data={analytics.chartMotivos} options={doughnutOptions} />
+            </div>
+          </div>
 
-            <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid var(--vp-border-light)" }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "var(--vp-text-muted)", marginBottom: "0.5rem" }}>
-                Canais de Envio
+          {/* GRÁFICO 5: Modalidades de Postagem & Canais de Frete */}
+          <div className={`${styles.chartCard} ${styles.colHalf}`}>
+            <div className={styles.chartHeader}>
+              <div className={styles.chartTitleWrapper}>
+                <h3 className={styles.chartTitle}>
+                  <Layers size={16} color="var(--vp-emerald)" />
+                  Canais & Modalidades de Despacho
+                </h3>
+                <span className={styles.chartSubtitle}>
+                  Comparativo de envios por SEDEX, PAC, Retirada na VendPago e Transportadora
+                </span>
               </div>
-              {tipoEnvioRanking.map((t) => (
-                <div
-                  key={t.tipo}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "0.8rem",
-                    padding: "0.25rem 0",
-                    color: "var(--vp-text-secondary)"
-                  }}
-                >
-                  <span style={{ fontWeight: 600 }}>{t.tipo}</span>
-                  <span>{t.quantidade} ({t.percentual}%)</span>
-                </div>
-              ))}
+              <span className={styles.chartBadge}>Logística</span>
+            </div>
+            <div className={styles.chartCanvasBoxMedium}>
+              <Bar data={analytics.chartModalidades} options={commonChartOptions} />
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

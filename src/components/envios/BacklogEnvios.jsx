@@ -18,7 +18,14 @@ import {
   AlertCircle,
   Inbox,
   Plus,
-  Download
+  Download,
+  Copy,
+  Calculator,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
+  ArrowUpDown,
+  Save
 } from "lucide-react";
 import {
   getEnviosPendentes,
@@ -26,7 +33,14 @@ import {
   updateEnvio,
   deleteEnvio
 } from "../../services/envioService";
-import { MOTIVOS, exportarParaCsvCorreios } from "../../constants/envioConfig";
+import {
+  MOTIVOS,
+  exportarParaCsvCorreios,
+  abrirCalculoOficialCorreios,
+  gerarTextoCobrancaBitrix,
+  CEP_ORIGEM_VENDPAGO,
+  formatarDataBR
+} from "../../constants/envioConfig";
 import styles from "./BacklogEnvios.module.css";
 
 const getBadgeStyle = (motivoNome) => {
@@ -60,11 +74,124 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
   const [itemParaConcluir, setItemParaConcluir] = useState(null);
   const [modalConcluirData, setModalConcluirData] = useState({
     rastreio: "",
-    nfe: ""
+    nfe: "",
+    valorFrete: ""
   });
   const [concluindoLoading, setConcluindoLoading] = useState(false);
 
   const [itemDetalhes, setItemDetalhes] = useState(null);
+  const [copiadoMacs, setCopiadoMacs] = useState(false);
+  const [copiadoBitrix, setCopiadoBitrix] = useState(false);
+
+  // Modal Rápido de NF-e
+  const [itemModalNfe, setItemModalNfe] = useState(null);
+  const [valorInputNfe, setValorInputNfe] = useState("");
+  const [salvandoNfe, setSalvandoNfe] = useState(false);
+
+  // Ordenação Rápida e Drag & Drop
+  const [criterioOrdenacao, setCriterioOrdenacao] = useState("nfe_primeiro"); // "nfe_primeiro" | "sem_nfe_primeiro" | "recentes" | "antigos" | "tipo_envio" | "manual"
+  const [ordemManualIds, setOrdemManualIds] = useState([]);
+  const [draggedIndex, setDraggedIndex] = useState(null);
+
+  // Helper para verificar se a NF-e já foi anexada/informada
+  const temNfeAnexada = (item) => {
+    if (!item || !item.nfe) return false;
+    const n = String(item.nfe).trim().toLowerCase();
+    return n !== "" && n !== "a ser informado" && n !== "a ser informada";
+  };
+
+  // Abre modal rápido para anexar ou editar NF-e
+  const abrirModalNfe = (item) => {
+    setItemModalNfe(item);
+    const nfeAtual = String(item.nfe || "").trim();
+    setValorInputNfe(
+      nfeAtual.toLowerCase() === "a ser informado" || nfeAtual.toLowerCase() === "a ser informada"
+        ? ""
+        : nfeAtual
+    );
+  };
+
+  // Salva NF-e digitada de forma instantânea
+  const handleSalvarNfeRapido = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!itemModalNfe) return;
+
+    setSalvandoNfe(true);
+    try {
+      const nfeFinal = valorInputNfe.trim() || "A ser informado";
+      await updateEnvio(itemModalNfe.id, { nfe: nfeFinal });
+      await carregarDados();
+      setItemModalNfe(null);
+    } catch (err) {
+      console.error("Erro ao atualizar NF-e rápida:", err);
+    } finally {
+      setSalvandoNfe(false);
+    }
+  };
+
+  // Handlers de Drag and Drop
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e, targetIndex) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    const novaLista = [...listaExibida];
+    const [removido] = novaLista.splice(draggedIndex, 1);
+    novaLista.splice(targetIndex, 0, removido);
+
+    const novosIds = novaLista.map((it) => it.id);
+    setOrdemManualIds(novosIds);
+    setCriterioOrdenacao("manual");
+    setDraggedIndex(null);
+  };
+
+  const moverItem = (index, direcao) => {
+    const novoIndex = index + direcao;
+    if (novoIndex < 0 || novoIndex >= listaExibida.length) return;
+
+    const novaLista = [...listaExibida];
+    const [removido] = novaLista.splice(index, 1);
+    novaLista.splice(novoIndex, 0, removido);
+
+    const novosIds = novaLista.map((it) => it.id);
+    setOrdemManualIds(novosIds);
+    setCriterioOrdenacao("manual");
+  };
+
+  // Copia múltiplos MACs no padrão exato do ERP: mac1 - mac2 - mac3
+  const copiarMacsParaErp = (macs) => {
+    if (!macs || !macs.length) return;
+    const textoFormatado = macs.join(" - ");
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(textoFormatado);
+    }
+    setCopiadoMacs(true);
+    setTimeout(() => setCopiadoMacs(false), 2000);
+  };
+
+  // Copia resumo do frete formatado para a tarefa do fiscal no Bitrix
+  const copiarResumoBitrix = (item) => {
+    if (!item) return;
+    const texto = gerarTextoCobrancaBitrix(item);
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(texto);
+    }
+    setCopiadoBitrix(true);
+    setTimeout(() => setCopiadoBitrix(false), 2200);
+  };
 
   // Carrega lista de envios
   const carregarDados = async () => {
@@ -92,11 +219,11 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
     return pendentes.filter((item) => item.diasAguardandoNfe >= 2).length;
   }, [pendentes]);
 
-  // Lista atual conforme aba e filtros
+  // Lista atual conforme aba, filtros e critério de ordenação
   const listaExibida = useMemo(() => {
     const base = activeTab === "pendentes" ? pendentes : concluidos;
 
-    return base.filter((item) => {
+    const filtrados = base.filter((item) => {
       // Filtro de texto
       const term = searchQuery.toLowerCase().trim();
       const matchText =
@@ -104,6 +231,7 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
         (item.conteudo && item.conteudo.toLowerCase().includes(term)) ||
         (item.destinatario && item.destinatario.toLowerCase().includes(term)) ||
         (item.mac && item.mac.toLowerCase().includes(term)) ||
+        (Array.isArray(item.macs) && item.macs.some((m) => m && m.toLowerCase().includes(term))) ||
         (item.rastreio && item.rastreio.toLowerCase().includes(term)) ||
         (item.chamado && item.chamado.toLowerCase().includes(term)) ||
         (item.nfe && item.nfe.toLowerCase().includes(term)) ||
@@ -119,14 +247,59 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
 
       return matchText && matchTipo && matchAtraso;
     });
-  }, [activeTab, pendentes, concluidos, searchQuery, tipoFiltro, apenasAtrasados48h]);
+
+    const listaOrdenada = [...filtrados];
+
+    if (criterioOrdenacao === "manual" && ordemManualIds.length > 0) {
+      listaOrdenada.sort((a, b) => {
+        const idxA = ordemManualIds.indexOf(a.id);
+        const idxB = ordemManualIds.indexOf(b.id);
+        if (idxA === -1 && idxB === -1) return 0;
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
+      });
+    } else if (criterioOrdenacao === "nfe_primeiro") {
+      listaOrdenada.sort((a, b) => {
+        const aTem = temNfeAnexada(a) ? 1 : 0;
+        const bTem = temNfeAnexada(b) ? 1 : 0;
+        if (bTem !== aTem) return bTem - aTem; // Com NF-e primeiro
+        return (b.data || "").localeCompare(a.data || "");
+      });
+    } else if (criterioOrdenacao === "sem_nfe_primeiro") {
+      listaOrdenada.sort((a, b) => {
+        const aTem = temNfeAnexada(a) ? 1 : 0;
+        const bTem = temNfeAnexada(b) ? 1 : 0;
+        if (aTem !== bTem) return aTem - bTem; // Sem NF-e primeiro
+        return (b.data || "").localeCompare(a.data || "");
+      });
+    } else if (criterioOrdenacao === "recentes") {
+      listaOrdenada.sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+    } else if (criterioOrdenacao === "antigos") {
+      listaOrdenada.sort((a, b) => (a.data || "").localeCompare(b.data || ""));
+    } else if (criterioOrdenacao === "tipo_envio") {
+      listaOrdenada.sort((a, b) => (a.tipoEnvio || "").localeCompare(b.tipoEnvio || ""));
+    }
+
+    return listaOrdenada;
+  }, [
+    activeTab,
+    pendentes,
+    concluidos,
+    searchQuery,
+    tipoFiltro,
+    apenasAtrasados48h,
+    criterioOrdenacao,
+    ordemManualIds
+  ]);
 
   // Abertura do modal de conclusão rápida
   const abrirModalConcluir = (item) => {
     setItemParaConcluir(item);
     setModalConcluirData({
       rastreio: item.rastreio || "",
-      nfe: item.nfe === "A ser informado" ? "" : item.nfe || ""
+      nfe: item.nfe === "A ser informado" ? "" : item.nfe || "",
+      valorFrete: item.valorFrete || ""
     });
   };
 
@@ -139,7 +312,8 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
       await updateEnvio(itemParaConcluir.id, {
         enviado: true,
         rastreio: modalConcluirData.rastreio.trim(),
-        nfe: modalConcluirData.nfe.trim() || itemParaConcluir.nfe
+        nfe: modalConcluirData.nfe.trim() || itemParaConcluir.nfe,
+        valorFrete: modalConcluirData.valorFrete.trim() || itemParaConcluir.valorFrete || ""
       });
 
       setItemParaConcluir(null);
@@ -163,46 +337,73 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
   };
 
   const renderBadgeNfe = (item) => {
-    const nfeLower = String(item.nfe || "").trim().toLowerCase();
-    const isPendente = nfeLower === "a ser informado" || nfeLower === "a ser informada" || !item.nfe;
+    const isPendente = !temNfeAnexada(item);
 
     if (!isPendente) {
       return (
-        <span className={styles.nfeCode} title="NF-e Emitida">
-          {item.nfe}
-        </span>
+        <button
+          type="button"
+          className={styles.btnNfeAnexada}
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirModalNfe(item);
+          }}
+          title="NF-e vinculada. Clique para editar ou alterar."
+        >
+          <FileCheck size={12} color="var(--vp-blue-primary)" />
+          <span>{item.nfe}</span>
+          <span className={styles.btnNfeTag}>Editar</span>
+        </button>
       );
     }
 
     if (item.diasAguardandoNfe >= 2) {
       return (
-        <span
-          className={`${styles.badge} ${styles.badgeDanger}`}
-          title={`Aguardando emissão há ${item.diasAguardandoNfe} dias (> 48h)`}
+        <button
+          type="button"
+          className={`${styles.btnNfePendente} ${styles.btnNfeDanger}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirModalNfe(item);
+          }}
+          title={`Aguardando NF-e há ${item.diasAguardandoNfe} dias (> 48h). Clique para anexar NF-e.`}
         >
           <AlertTriangle size={12} />
-          {item.diasAguardandoNfe}d aguardando (&gt;48h)
-        </span>
+          <span>{item.diasAguardandoNfe}d (&gt;48h) • Anexar NF-e</span>
+        </button>
       );
     }
 
     if (item.diasAguardandoNfe === 1) {
       return (
-        <span
-          className={`${styles.badge} ${styles.badgeWarning}`}
-          title="Aguardando emissão há 1 dia (24h)"
+        <button
+          type="button"
+          className={`${styles.btnNfePendente} ${styles.btnNfeWarning}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirModalNfe(item);
+          }}
+          title="Aguardando NF-e há 1 dia (24h). Clique para anexar NF-e."
         >
           <Clock size={12} />
-          1d aguardando
-        </span>
+          <span>1d • Anexar NF-e</span>
+        </button>
       );
     }
 
     return (
-      <span className={`${styles.badge} ${styles.badgeNeutral}`}>
-        <Clock size={12} />
-        Aguardando NF-e
-      </span>
+      <button
+        type="button"
+        className={`${styles.btnNfePendente} ${styles.btnNfeNeutral}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          abrirModalNfe(item);
+        }}
+        title="Clique para anexar o número da NF-e deste envio"
+      >
+        <Plus size={12} />
+        <span>Aguardando NF-e (+ Anexar)</span>
+      </button>
     );
   };
 
@@ -359,19 +560,100 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
         </div>
       </div>
 
+      {/* Barra de Ordenação Rápida da Bancada */}
+      <div className={styles.sortBar}>
+        <div className={styles.sortBarTitle}>
+          <ArrowUpDown size={14} />
+          <span>Ordenar Bancada:</span>
+        </div>
+        <div className={styles.sortButtons}>
+          <button
+            type="button"
+            className={`${styles.btnSort} ${
+              criterioOrdenacao === "nfe_primeiro" ? styles.btnSortActive : ""
+            }`}
+            onClick={() => setCriterioOrdenacao("nfe_primeiro")}
+            title="Exibir primeiro os equipamentos com NF-e anexada (prontos para despacho)"
+          >
+            <FileCheck size={13} />
+            <span>Com NF-e no Topo</span>
+          </button>
+
+          <button
+            type="button"
+            className={`${styles.btnSort} ${
+              criterioOrdenacao === "sem_nfe_primeiro" ? styles.btnSortActive : ""
+            }`}
+            onClick={() => setCriterioOrdenacao("sem_nfe_primeiro")}
+            title="Priorizar equipamentos que estão aguardando emissão da NF-e"
+          >
+            <Clock size={13} />
+            <span>Aguardando NF-e no Topo</span>
+          </button>
+
+          <button
+            type="button"
+            className={`${styles.btnSort} ${
+              criterioOrdenacao === "recentes" ? styles.btnSortActive : ""
+            }`}
+            onClick={() => setCriterioOrdenacao("recentes")}
+            title="Ordenar por data mais recente"
+          >
+            <span>Mais Recentes</span>
+          </button>
+
+          <button
+            type="button"
+            className={`${styles.btnSort} ${
+              criterioOrdenacao === "antigos" ? styles.btnSortActive : ""
+            }`}
+            onClick={() => setCriterioOrdenacao("antigos")}
+            title="Ordenar por data mais antiga"
+          >
+            <span>Mais Antigos</span>
+          </button>
+
+          <button
+            type="button"
+            className={`${styles.btnSort} ${
+              criterioOrdenacao === "tipo_envio" ? styles.btnSortActive : ""
+            }`}
+            onClick={() => setCriterioOrdenacao("tipo_envio")}
+            title="Agrupar por tipo de frete (SEDEX, PAC, Retirada)"
+          >
+            <Truck size={13} />
+            <span>Por Tipo de Frete</span>
+          </button>
+
+          {ordemManualIds.length > 0 && (
+            <button
+              type="button"
+              className={`${styles.btnSort} ${
+                criterioOrdenacao === "manual" ? styles.btnSortActive : ""
+              }`}
+              onClick={() => setCriterioOrdenacao("manual")}
+              title="Respeitar ordenação arrastada manualmente"
+            >
+              <GripVertical size={13} />
+              <span>Ordem Manual</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Tabela de Envios */}
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead>
             <tr>
-              <th className={styles.th}>Data</th>
+              <th className={styles.thDrag} title="Arrastar ou usar setas para reordenar na bancada"></th>
+              <th className={styles.th} style={{ minWidth: "95px" }}>Data</th>
               <th className={styles.th}>Chamado</th>
               <th className={styles.th}>Conteúdo / MAC</th>
               <th className={styles.th}>Motivo</th>
               <th className={styles.th}>Destinatário</th>
               <th className={styles.th}>Tipo / Rastreio</th>
               <th className={styles.th}>Status NF-e</th>
-              <th className={styles.th}>QA Bancada</th>
               <th className={styles.th} style={{ textAlign: "right" }}>Ações</th>
             </tr>
           </thead>
@@ -390,17 +672,64 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                 </td>
               </tr>
             ) : (
-              listaExibida.map((item) => {
+              listaExibida.map((item, index) => {
                 const isCritical =
                   activeTab === "pendentes" && item.diasAguardandoNfe >= 2;
+                const comNfe = temNfeAnexada(item);
+                const isProntoDespacho = comNfe && activeTab === "pendentes";
 
                 return (
                   <tr
                     key={item.id}
-                    className={`${styles.tr} ${isCritical ? styles.trCritical : ""}`}
+                    draggable={activeTab === "pendentes"}
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, index)}
+                    className={`${styles.tr} ${isCritical ? styles.trCritical : ""} ${
+                      isProntoDespacho ? styles.trComNfe : ""
+                    } ${draggedIndex === index ? styles.trDragging : ""}`}
                   >
+                    <td className={styles.tdDrag}>
+                      <div className={styles.dragHandleWrapper}>
+                        <div
+                          className={styles.dragHandle}
+                          title="Segure e arraste para mudar a posição na fila"
+                        >
+                          <GripVertical size={16} />
+                        </div>
+                        <div className={styles.miniArrows}>
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            className={styles.btnMiniArrow}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moverItem(index, -1);
+                            }}
+                            title="Mover para cima"
+                          >
+                            <ChevronUp size={11} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === listaExibida.length - 1}
+                            className={styles.btnMiniArrow}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moverItem(index, 1);
+                            }}
+                            title="Mover para baixo"
+                          >
+                            <ChevronDown size={11} />
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+
                     <td className={styles.td}>
-                      <span style={{ fontWeight: 600 }}>{item.data}</span>
+                      <span style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+                        {formatarDataBR(item.data)}
+                      </span>
                     </td>
 
                     <td className={styles.td}>
@@ -424,15 +753,36 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                       <div style={{ fontWeight: 600, color: "var(--vp-navy-dark)" }}>
                         {item.conteudo}
                       </div>
-                      {item.mac ? (
-                        <div style={{ marginTop: "3px" }}>
-                          <code className={styles.macCode}>{item.mac}</code>
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: "0.75rem", color: "var(--vp-text-dim)" }}>
-                          -
-                        </div>
-                      )}
+                      {(() => {
+                        const macs = Array.isArray(item.macs) && item.macs.length > 0
+                          ? item.macs
+                          : item.mac
+                          ? item.mac.split(/[\r\n,;]+/).map((s) => s.trim()).filter(Boolean)
+                          : [];
+
+                        if (macs.length === 0) {
+                          return <div style={{ fontSize: "0.75rem", color: "var(--vp-text-dim)" }}>-</div>;
+                        }
+                        return (
+                          <div style={{ marginTop: "3px", display: "flex", alignItems: "center", gap: "5px", flexWrap: "wrap" }}>
+                            <code className={styles.macCode}>{macs[0]}</code>
+                            {macs.length > 1 && (
+                              <span className={styles.badgeMacsCount}>+{macs.length - 1} MACs</span>
+                            )}
+                            <button
+                              type="button"
+                              className={styles.btnCopyTable}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copiarMacsParaErp(macs);
+                              }}
+                              title="Copiar MAC(s) no formato ERP (separados por -)"
+                            >
+                              <Copy size={11} />
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </td>
 
                     <td className={styles.td}>
@@ -446,10 +796,17 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                     </td>
 
                     <td className={styles.td}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap" }}>
                         <span className={`${styles.badge} ${styles.badgeNeutral}`}>
                           {item.tipoEnvio || "SEDEX"}
                         </span>
+                        {item.valorFrete && (
+                          <span className={styles.badgeFrete} title="Valor do frete cotado">
+                            {String(item.valorFrete).trim().startsWith("R$")
+                              ? item.valorFrete
+                              : `R$ ${item.valorFrete}`}
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: "0.78rem", fontFamily: "monospace", marginTop: "2px" }}>
                         {item.rastreio ? (
@@ -464,25 +821,6 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
 
                     <td className={styles.td}>
                       {renderBadgeNfe(item)}
-                    </td>
-
-                    <td className={styles.td}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                        <span
-                          className={`${styles.checkIndicator} ${
-                            item.testado ? styles.checkOk : styles.checkMissing
-                          }`}
-                        >
-                          <Check size={12} /> Testado
-                        </span>
-                        <span
-                          className={`${styles.checkIndicator} ${
-                            item.doubleCheck ? styles.checkOk : styles.checkMissing
-                          }`}
-                        >
-                          <Check size={12} /> Double Check
-                        </span>
-                      </div>
                     </td>
 
                     <td className={styles.td} style={{ textAlign: "right" }}>
@@ -606,6 +944,46 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                   />
                 </div>
 
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--vp-text-secondary)" }}>
+                      Valor do Frete (R$)
+                    </label>
+                    <button
+                      type="button"
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "var(--vp-blue-primary)",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "3px"
+                      }}
+                      onClick={() => abrirCalculoOficialCorreios(itemParaConcluir)}
+                      title="Abrir tela oficial de cálculo dos Correios"
+                    >
+                      <Calculator size={13} /> Simular Correios
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Ex: 42,50 ou 0,00"
+                    style={{
+                      height: "38px",
+                      padding: "0 0.75rem",
+                      border: "1px solid var(--vp-border-default)",
+                      borderRadius: "4px"
+                    }}
+                    value={modalConcluirData.valorFrete}
+                    onChange={(e) =>
+                      setModalConcluirData((prev) => ({ ...prev, valorFrete: e.target.value }))
+                    }
+                  />
+                </div>
+
                 <div style={{ fontSize: "0.75rem", color: "var(--vp-text-muted)" }}>
                   Ao confirmar, o status será marcado como <strong>Despachado / Concluído</strong> e movido para o histórico.
                 </div>
@@ -653,6 +1031,74 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
         </div>
       )}
 
+      {/* Modal Rápido: Anexar / Editar NF-e */}
+      {itemModalNfe && (
+        <div className={styles.modalBackdrop}>
+          <div className={styles.modalCard} style={{ maxWidth: "460px" }}>
+            <div className={styles.modalHeader}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <FileCheck size={18} color="var(--vp-blue-primary)" />
+                <h3 className={styles.modalTitle}>Anexar / Editar NF-e</h3>
+              </div>
+              <button
+                type="button"
+                className={styles.modalClose}
+                onClick={() => setItemModalNfe(null)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSalvarNfeRapido}>
+              <div className={styles.modalBody}>
+                <div className={styles.modalItemSummary}>
+                  <div><strong>Equipamento:</strong> {itemModalNfe.conteudo}</div>
+                  <div><strong>Destino:</strong> {itemModalNfe.destinatario} ({itemModalNfe.tipoEnvio})</div>
+                  {itemModalNfe.chamado && (
+                    <div><strong>Chamado:</strong> {itemModalNfe.chamado}</div>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginTop: "0.25rem" }}>
+                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--vp-navy-dark)" }}>
+                    Número da NF-e Emitida
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: NF-009841 ou 12845"
+                    className={styles.modalInput}
+                    value={valorInputNfe}
+                    onChange={(e) => setValorInputNfe(e.target.value)}
+                    autoFocus
+                  />
+                  <span style={{ fontSize: "0.75rem", color: "var(--vp-text-muted)" }}>
+                    Ao anexar a NF-e, o card receberá tom destacado na bancada e aguardará apenas o rastreio para despacho final.
+                  </span>
+                </div>
+              </div>
+
+              <div className={styles.modalFooter}>
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  onClick={() => setItemModalNfe(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className={styles.btnPrimary}
+                  disabled={salvandoNfe}
+                >
+                  <Save size={14} />
+                  <span>{salvandoNfe ? "Salvando..." : "Salvar NF-e"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Detalhes do Registro */}
       {itemDetalhes && (
         <div className={styles.modalBackdrop}>
@@ -675,7 +1121,7 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", fontSize: "0.85rem" }}>
                 <div>
                   <span style={{ color: "var(--vp-text-muted)", fontSize: "0.75rem" }}>Data do Envio:</span>
-                  <div style={{ fontWeight: 600 }}>{itemDetalhes.data}</div>
+                  <div style={{ fontWeight: 600 }}>{formatarDataBR(itemDetalhes.data)}</div>
                 </div>
                 <div>
                   <span style={{ color: "var(--vp-text-muted)", fontSize: "0.75rem" }}>Chamado:</span>
@@ -700,11 +1146,73 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                   <span style={{ color: "var(--vp-text-muted)", fontSize: "0.75rem" }}>Equipamento / Conteúdo:</span>
                   <div style={{ fontWeight: 600 }}>{itemDetalhes.conteudo}</div>
                 </div>
-                <div>
-                  <span style={{ color: "var(--vp-text-muted)", fontSize: "0.75rem" }}>MAC / Serial:</span>
-                  <div style={{ marginTop: "2px" }}>
-                    <code className={styles.macCode}>{itemDetalhes.mac || "Não informado"}</code>
-                  </div>
+                <div style={{ gridColumn: "span 2" }}>
+                  {(() => {
+                    const macs = Array.isArray(itemDetalhes.macs) && itemDetalhes.macs.length > 0
+                      ? itemDetalhes.macs
+                      : itemDetalhes.mac
+                      ? itemDetalhes.mac.split(/[\r\n,;]+/).map((s) => s.trim()).filter(Boolean)
+                      : [];
+
+                    return (
+                      <>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                          <span style={{ color: "var(--vp-text-muted)", fontSize: "0.75rem", fontWeight: 700 }}>
+                            MAC / Números de Série:
+                          </span>
+                          {macs.length > 0 && (
+                            <button
+                              type="button"
+                              className={copiadoMacs ? styles.btnCopiarSucesso : styles.btnCopiarErp}
+                              onClick={() => copiarMacsParaErp(macs)}
+                              title="Copiar no formato do ERP (separados por ' - ')"
+                            >
+                              {copiadoMacs ? (
+                                <>
+                                  <Check size={13} /> Copiado no formato ERP!
+                                </>
+                              ) : (
+                                <>
+                                  <Copy size={13} /> Copiar para ERP {macs.length > 1 ? `(${macs.length} MACs)` : ""}
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+
+                        <div>
+                          {macs.length === 0 ? (
+                            <span style={{ color: "var(--vp-text-dim)", fontSize: "0.85rem" }}>Não informado</span>
+                          ) : macs.length === 1 ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <code className={styles.macCode}>{macs[0]}</code>
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                              <div style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+                                gap: "0.35rem",
+                                maxHeight: "130px",
+                                overflowY: "auto",
+                                backgroundColor: "var(--vp-bg-main)",
+                                border: "1px solid var(--vp-border-light)",
+                                padding: "0.5rem",
+                                borderRadius: "4px"
+                              }}>
+                                {macs.map((m, mIdx) => (
+                                  <div key={mIdx} style={{ fontSize: "0.78rem", fontFamily: "monospace" }}>
+                                    <strong style={{ color: "var(--vp-text-muted)", marginRight: "4px" }}>#{mIdx + 1}</strong>
+                                    <code>{m}</code>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <div>
@@ -751,6 +1259,71 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                 </div>
               </div>
 
+              {/* Seção Destacada: Cotação de Frete & Fiscal (Bitrix) */}
+              <div className={styles.freteBox}>
+                <div className={styles.freteHeaderRow}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <Truck size={16} color="var(--vp-blue-primary)" />
+                    <strong style={{ fontSize: "0.85rem", color: "var(--vp-navy-dark)" }}>
+                      Cotação de Frete & Cobrança (Bitrix / Fiscal)
+                    </strong>
+                  </div>
+                  <span className={styles.badgeFreteOrigem}>
+                    Origem: VendPago ({CEP_ORIGEM_VENDPAGO})
+                  </span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", fontSize: "0.82rem", marginTop: "0.4rem" }}>
+                  <div>
+                    <span style={{ color: "var(--vp-text-muted)", fontSize: "0.72rem" }}>Modalidade de Envio:</span>
+                    <div style={{ fontWeight: 700, color: "var(--vp-navy-dark)" }}>
+                      {itemDetalhes.tipoEnvio || "SEDEX"}
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ color: "var(--vp-text-muted)", fontSize: "0.72rem" }}>Valor do Frete Cotado:</span>
+                    <div style={{ fontWeight: 800, fontSize: "0.95rem", color: itemDetalhes.valorFrete ? "#15803d" : "#b45309" }}>
+                      {itemDetalhes.valorFrete
+                        ? (String(itemDetalhes.valorFrete).trim().startsWith("R$")
+                            ? itemDetalhes.valorFrete
+                            : `R$ ${itemDetalhes.valorFrete}`)
+                        : "Não informado / A calcular"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.freteActionsRow}>
+                  <button
+                    type="button"
+                    className={styles.btnSimularCorreiosModal}
+                    onClick={() => abrirCalculoOficialCorreios(itemDetalhes)}
+                    title="Abre a tela oficial dos Correios com o cálculo dos preços e prazos já processados para printar"
+                  >
+                    <ExternalLink size={13} />
+                    <span>Abrir Cálculo Oficial nos Correios</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={copiadoBitrix ? styles.btnCopiarBitrixSucesso : styles.btnCopiarBitrixModal}
+                    onClick={() => copiarResumoBitrix(itemDetalhes)}
+                    title="Copiar dados formatados para colar direto no chamado/tarefa do Bitrix"
+                  >
+                    {copiadoBitrix ? (
+                      <>
+                        <Check size={13} />
+                        <span>Copiado para o Bitrix!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={13} />
+                        <span>Copiar Cobrança p/ Bitrix</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
               {itemDetalhes.itens && itemDetalhes.itens.length > 0 && (
                 <div>
                   <span style={{ color: "var(--vp-text-muted)", fontSize: "0.75rem" }}>Itens Inclusos no Pacote:</span>
@@ -782,15 +1355,6 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                   </div>
                 </div>
               )}
-
-              <div style={{ display: "flex", gap: "1rem", marginTop: "0.25rem", paddingTop: "0.5rem", borderTop: "1px solid var(--vp-border-light)" }}>
-                <span className={`${styles.checkIndicator} ${itemDetalhes.testado ? styles.checkOk : styles.checkMissing}`}>
-                  <Check size={14} /> Testado na Bancada
-                </span>
-                <span className={`${styles.checkIndicator} ${itemDetalhes.doubleCheck ? styles.checkOk : styles.checkMissing}`}>
-                  <Check size={14} /> Double Check Realizado
-                </span>
-              </div>
             </div>
 
             <div className={styles.modalFooter}>

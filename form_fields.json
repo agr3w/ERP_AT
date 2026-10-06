@@ -1,0 +1,467 @@
+[
+  {
+    "name": "data",
+    "val": "06/10/2026",
+    "type": "text"
+  },
+  {
+    "name": "dataAtual",
+    "val": "06/10/2026",
+    "type": "hidden"
+  },
+  {
+    "name": "cepOrigem",
+    "val": "",
+    "type": "Text"
+  },
+  {
+    "name": "cepDestino",
+    "val": "",
+    "type": "Text"
+  },
+  {
+    "name": "compararServico",
+    "val": "",
+    "type": "checkbox"
+  },
+  {
+    "name": "Selecao",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Formato",
+    "val": "1",
+    "type": "text"
+  },
+  {
+    "name": "Altura",
+    "val": "",
+    "type": "text"
+  },
+  {
+    "name": "Largura",
+    "val": "",
+    "type": "text"
+  },
+  {
+    "name": "Comprimento",
+    "val": "",
+    "type": "text"
+  },
+  {
+    "name": "Diametro",
+    "val": "",
+    "type": "text"
+  },
+  {
+    "name": "Selecao31",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_31",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "nomeEmbalagemCaixa",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "TipoEmbalagem31",
+    "val": "",
+    "type": "text"
+  },
+  {
+    "name": "Selecao32",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_32",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "TipoEmbalagem32",
+    "val": "",
+    "type": "text"
+  },
+  {
+    "name": "Selecao33",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_33",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "TipoEmbalagem33",
+    "val": "",
+    "type": "text"
+  },
+  {
+    "name": "Selecao34",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_34",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "TipoEmbalagem34",
+    "val": "",
+    "type": "text"
+  },
+  {
+    "name": "Selecao1",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_1",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao2",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_2",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao3",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_3",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao4",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_4",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao5",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_5",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao6",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_6",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao7",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_7",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao14",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_14",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao15",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_15",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao16",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_16",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao17",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_17",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao18",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_18",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao19",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_19",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao20",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_20",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao8",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_8",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "nomeEmbalagemEnvelope",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "TipoEmbalagem8",
+    "val": "",
+    "type": "text"
+  },
+  {
+    "name": "Selecao9",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_9",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao10",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_10",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao11",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_11",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao12",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_12",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "TipoEmbalagem12",
+    "val": "",
+    "type": "text"
+  },
+  {
+    "name": "Selecao13",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_13",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao21",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_21",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao22",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_22",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "TipoEmbalagem22",
+    "val": "",
+    "type": "text"
+  },
+  {
+    "name": "Selecao23",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_23",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao24",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_24",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao25",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_25",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao26",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_26",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao27",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_27",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao28",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_28",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao29",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_29",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "Selecao30",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "proCod_in_30",
+    "val": "",
+    "type": "hidden"
+  },
+  {
+    "name": "MaoPropria",
+    "val": "",
+    "type": "checkbox"
+  },
+  {
+    "name": "avisoRecebimento",
+    "val": "",
+    "type": "checkbox"
+  },
+  {
+    "name": "ckValorDeclarado",
+    "val": "",
+    "type": "checkbox"
+  },
+  {
+    "name": "valorDeclarado",
+    "val": "",
+    "type": "text"
+  },
+  {
+    "name": "Calcular",
+    "val": "Calcular",
+    "type": "submit"
+  }
+]

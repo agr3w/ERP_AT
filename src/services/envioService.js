@@ -42,12 +42,21 @@ export function calcularDiasAguardandoNfe(dataCadastro, nfe) {
   if (dataCadastro instanceof Timestamp) {
     dataOrigem = dataCadastro.toDate();
   } else if (typeof dataCadastro === "string") {
-    // Trata formato YYYY-MM-DD ou ISO
+    // Trata formato dd/mm/yyyy, YYYY-MM-DD ou ISO
     if (dataCadastro.includes("T")) {
       dataOrigem = new Date(dataCadastro);
-    } else {
-      const [ano, mes, dia] = dataCadastro.split("-").map(Number);
+    } else if (dataCadastro.includes("/")) {
+      const [dia, mes, ano] = dataCadastro.split("/").map(Number);
       dataOrigem = new Date(ano, mes - 1, dia);
+    } else if (dataCadastro.includes("-")) {
+      const parts = dataCadastro.split("-").map(Number);
+      if (parts[0] > 1000) {
+        dataOrigem = new Date(parts[0], parts[1] - 1, parts[2]);
+      } else {
+        dataOrigem = new Date(parts[2], parts[1] - 1, parts[0]);
+      }
+    } else {
+      dataOrigem = new Date(dataCadastro);
     }
   } else if (dataCadastro instanceof Date) {
     dataOrigem = new Date(dataCadastro);
@@ -98,192 +107,52 @@ function processarEnvioData(docId, rawData) {
   };
 }
 
-// Dados iniciais para visualização imediata na bancada se o banco estiver vazio
-const SEED_ENVIOS = [
-  {
-    id: "seed-1",
-    data: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 3 dias atrás (> 48h)
-    rastreio: "",
-    conteudo: "1x Payblu E1223 + 1x Cabo MDB-Y",
-    itens: [
-      { qtd: 1, nome: "Terminal Payblu E1223 - 4.1.1 - MDB", isCustom: false, nomeCustom: "" },
-      { qtd: 1, nome: "Kit Cabo MDB-Y", isCustom: false, nomeCustom: "" }
-    ],
-    mac: "b0:cb:d8:5f:d1:c2",
-    destinatario: "Michele Bomfim Andrade",
-    cep: "37415-068",
-    logradouro: "Rua Vereador Inácio Resck",
-    numero: "147",
-    semNumero: false,
-    complemento: "",
-    bairro: "Residencial Dharma",
-    cidade: "Três Corações",
-    uf: "MG",
-    centroCusto: "SUPORTE",
-    pesoGramas: "500",
-    valorDeclarado: "1500.00",
-    testado: true,
-    nfe: "155807",
-    chamado: "#155807",
-    linkChamado: "https://vendpago.atlassian.net/browse/AT-155807",
-    tipoEnvio: "SEDEX",
-    endereco: "Rua Vereador Inácio Resck, 147 - Residencial Dharma, Três Corações - MG, CEP: 37415-068",
-    motivo: "Suporte",
-    observacoes: "Equipamento revisado e testado.",
-    doubleCheck: true,
-    enviado: false,
-    criadoEm: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "seed-2",
-    data: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 1 dia atrás (< 48h)
-    rastreio: "",
-    conteudo: "1x Terminal PayBlu Cypress - 2.0.12 - MDB + 2x Kit Cabo M5",
-    itens: [
-      { qtd: 1, nome: "Terminal PayBlu Cypress - 2.0.12 - MDB", isCustom: false, nomeCustom: "" },
-      { qtd: 2, nome: "Kit Cabo M5", isCustom: false, nomeCustom: "" }
-    ],
-    mac: "aa:11:bb:22:cc:33",
-    destinatario: "Vending Tech Curitiba",
-    cep: "80020-000",
-    logradouro: "Rua Marechal Deodoro",
-    numero: "450",
-    semNumero: false,
-    complemento: "Conj 302",
-    bairro: "Centro",
-    cidade: "Curitiba",
-    uf: "PR",
-    centroCusto: "SUPORTE",
-    pesoGramas: "500",
-    testado: true,
-    nfe: "A ser informado",
-    chamado: "#10855",
-    linkChamado: "https://vendpago.atlassian.net/browse/AT-10855",
-    tipoEnvio: "PAC",
-    endereco: "Rua Marechal Deodoro, 450 - Conj 302 - Centro, Curitiba - PR, CEP: 80020-000",
-    motivo: "Suporte",
-    observacoes: "Troca preventiva. Pacote pronto na bancada 3.",
-    doubleCheck: false,
-    enviado: false,
-    criadoEm: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "seed-3",
-    data: new Date().toISOString().split("T")[0], // Hoje
-    rastreio: "QB987654321BR",
-    conteudo: "2x Terminal VendTEF com cartão SD",
-    itens: [
-      { qtd: 2, nome: "Terminal VendTEF com cartão SD", isCustom: false, nomeCustom: "" }
-    ],
-    mac: "70:85:c2:90:12:ff",
-    destinatario: "Posto Auto Shopping Campinas",
-    cep: "13010-001",
-    logradouro: "Rua Barão de Jaguara",
-    numero: "789",
-    semNumero: false,
-    complemento: "",
-    bairro: "Centro",
-    cidade: "Campinas",
-    uf: "SP",
-    centroCusto: "COMERCIAL",
-    pesoGramas: "800",
-    testado: true,
-    nfe: "NF-009481",
-    chamado: "#10860",
-    linkChamado: "https://vendpago.atlassian.net/browse/AT-10860",
-    tipoEnvio: "SEDEX",
-    endereco: "Rua Barão de Jaguara, 789 - Centro, Campinas - SP, CEP: 13010-001",
-    motivo: "Comercial",
-    observacoes: "Despacho prioritário para ativação de cliente VIP.",
-    doubleCheck: true,
-    enviado: true,
-    criadoEm: new Date().toISOString()
-  },
-  {
-    id: "seed-4",
-    data: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 4 dias atrás (> 48h)
-    rastreio: "",
-    conteudo: "1x Terminal Payblu E1223 - 2.1.2 - Pulso IL + 1x Fonte Auxiliar SpeedQueen",
-    itens: [
-      { qtd: 1, nome: "Terminal Payblu E1223 - 2.1.2 - Pulso IL", isCustom: false, nomeCustom: "" },
-      { qtd: 1, nome: "Fonte Auxiliar SpeedQueen", isCustom: false, nomeCustom: "" }
-    ],
-    mac: "e4:5f:01:88:99:aa",
-    destinatario: "Bancada Terceirizada Savassi",
-    cep: "30140-071",
-    logradouro: "Av. Afonso Pena",
-    numero: "1500",
-    semNumero: false,
-    complemento: "Sala 8",
-    bairro: "Savassi",
-    cidade: "Belo Horizonte",
-    uf: "MG",
-    centroCusto: "MANUTENÇÃO",
-    pesoGramas: "1100",
-    testado: true,
-    nfe: "A ser informado",
-    chamado: "#10820",
-    linkChamado: "https://vendpago.atlassian.net/browse/AT-10820",
-    tipoEnvio: "Transportadora",
-    endereco: "Av. Afonso Pena, 1500 - Sala 8 - Savassi, Belo Horizonte - MG, CEP: 30140-071",
-    motivo: "Manutenção",
-    observacoes: "Cobrar urgência do time fiscal referente à NF de remessa.",
-    doubleCheck: true,
-    enviado: false,
-    criadoEm: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "seed-5",
-    data: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    rastreio: "BR849201948",
-    conteudo: "1x Moderninha PagBank",
-    itens: [
-      { qtd: 1, nome: "Moderninha PagBank", isCustom: false, nomeCustom: "" }
-    ],
-    mac: "c8:2a:14:55:66:77",
-    destinatario: "Retirada em Mãos - Técnico Carlos",
-    cep: "80000-000",
-    logradouro: "Balcão Assistência Técnica VendPago - Sede",
-    numero: "S/N",
-    semNumero: true,
-    complemento: "Balcão",
-    bairro: "Portão",
-    cidade: "Curitiba",
-    uf: "PR",
-    centroCusto: "SUPORTE",
-    pesoGramas: "400",
-    testado: true,
-    nfe: "NF-009450",
-    chamado: "#10833",
-    linkChamado: "https://vendpago.atlassian.net/browse/AT-10833",
-    tipoEnvio: "Retirada",
-    endereco: "Balcão Assistência Técnica VendPago - Sede, S/N - Balcão - Portão, Curitiba - PR, CEP: 80000-000",
-    motivo: "Suporte",
-    observacoes: "Retirado no balcão da assistência.",
-    doubleCheck: true,
-    enviado: true,
-    criadoEm: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+// Limpeza proativa de qualquer resquício de dados mock/seed legados
+if (typeof window !== "undefined" && window.localStorage) {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const apenasReais = parsed.filter((item) => item && !String(item.id || "").startsWith("seed-"));
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(apenasReais));
+      }
+    }
+    ["vendpago_erp_envios_v1", "vendpago_erp_envios_v2", "vendpago_erp_envios_v3", "vendpago_erp_envios_v4"].forEach((k) => {
+      localStorage.removeItem(k);
+    });
+  } catch {
+    // Ignora em ambientes sem window
   }
-];
+}
 
-// Funções de manipulação do fallback LocalStorage
+// Funções de manipulação do fallback LocalStorage (ambiente limpo para produção)
 function getLocalCache() {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(SEED_ENVIOS));
-      return SEED_ENVIOS;
+      return [];
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    const apenasReais = Array.isArray(parsed)
+      ? parsed.filter((item) => item && !String(item.id || "").startsWith("seed-"))
+      : [];
+    if (Array.isArray(parsed) && apenasReais.length !== parsed.length) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(apenasReais));
+    }
+    return apenasReais;
   } catch (err) {
     console.error("Erro ao ler cache local:", err);
-    return SEED_ENVIOS;
+    return [];
   }
 }
 
 function saveLocalCache(list) {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
+    const apenasReais = Array.isArray(list)
+      ? list.filter((item) => item && !String(item.id || "").startsWith("seed-"))
+      : [];
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(apenasReais));
   } catch (err) {
     console.error("Erro ao salvar cache local:", err);
   }
@@ -398,6 +267,7 @@ export async function deleteEnvio(id) {
  */
 export async function getEnviosPendentes() {
   let items = [];
+  let consultouFirestore = false;
 
   if (db) {
     try {
@@ -407,17 +277,21 @@ export async function getEnviosPendentes() {
       );
       const snapshot = await getDocs(q);
       snapshot.forEach((d) => {
-        items.push(processarEnvioData(d.id, d.data()));
+        if (!String(d.id).startsWith("seed-")) {
+          items.push(processarEnvioData(d.id, d.data()));
+        }
       });
+      consultouFirestore = true;
     } catch (error) {
       console.warn("Consulta Firestore pendentes falhou. Utilizando cache local:", error);
     }
   }
 
-  if (items.length === 0) {
+  // Se Firestore falhou (modo offline), usa o cache local
+  if (!consultouFirestore) {
     const local = getLocalCache();
     items = local
-      .filter((item) => !item.enviado)
+      .filter((item) => !item.enviado && !String(item.id).startsWith("seed-"))
       .map((item) => processarEnvioData(item.id, item));
   }
 
@@ -436,6 +310,7 @@ export async function getEnviosPendentes() {
  */
 export async function getEnviosConcluidos() {
   let items = [];
+  let consultouFirestore = false;
 
   if (db) {
     try {
@@ -445,17 +320,20 @@ export async function getEnviosConcluidos() {
       );
       const snapshot = await getDocs(q);
       snapshot.forEach((d) => {
-        items.push(processarEnvioData(d.id, d.data()));
+        if (!String(d.id).startsWith("seed-")) {
+          items.push(processarEnvioData(d.id, d.data()));
+        }
       });
+      consultouFirestore = true;
     } catch (error) {
       console.warn("Consulta Firestore concluídos falhou. Utilizando cache local:", error);
     }
   }
 
-  if (items.length === 0) {
+  if (!consultouFirestore) {
     const local = getLocalCache();
     items = local
-      .filter((item) => item.enviado)
+      .filter((item) => item.enviado && !String(item.id).startsWith("seed-"))
       .map((item) => processarEnvioData(item.id, item));
   }
 
@@ -469,21 +347,27 @@ export async function getEnviosConcluidos() {
  */
 export async function getAllEnvios() {
   let items = [];
+  let consultouFirestore = false;
 
   if (db) {
     try {
       const snapshot = await getDocs(collection(db, COLLECTION_NAME));
       snapshot.forEach((d) => {
-        items.push(processarEnvioData(d.id, d.data()));
+        if (!String(d.id).startsWith("seed-")) {
+          items.push(processarEnvioData(d.id, d.data()));
+        }
       });
+      consultouFirestore = true;
     } catch (error) {
       console.warn("Consulta geral Firestore falhou. Utilizando cache local:", error);
     }
   }
 
-  if (items.length === 0) {
+  if (!consultouFirestore) {
     const local = getLocalCache();
-    items = local.map((item) => processarEnvioData(item.id, item));
+    items = local
+      .filter((item) => !String(item.id).startsWith("seed-"))
+      .map((item) => processarEnvioData(item.id, item));
   }
 
   return items;
@@ -511,7 +395,21 @@ export async function getMetrics() {
   // Envios deste mês
   const enviosMes = todos.filter((item) => {
     if (!item.data) return false;
-    const [ano, mes] = item.data.split("-").map(Number);
+    let ano, mes;
+    if (String(item.data).includes("/")) {
+      const parts = item.data.split("/").map(Number);
+      mes = parts[1];
+      ano = parts[2];
+    } else if (String(item.data).includes("-")) {
+      const parts = item.data.split("-").map(Number);
+      if (parts[0] > 1000) {
+        ano = parts[0];
+        mes = parts[1];
+      } else {
+        mes = parts[1];
+        ano = parts[2];
+      }
+    }
     return ano === anoAtual && mes === mesAtual + 1;
   });
 
