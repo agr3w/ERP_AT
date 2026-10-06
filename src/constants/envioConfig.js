@@ -1,37 +1,12 @@
 // src/constants/envioConfig.js
 
 export const MOTIVOS = {
-  Locação: {
-    id: 'Locação',
-    label: 'Locação',
-    color: '#1d4ed8',       // Azul vibrante
-    bg: '#dbeafe',          // Azul suave
-    border: '#93c5fd'
-  },
-  Comercial: {
-    id: 'Comercial',
-    label: 'Comercial',
-    color: '#15803d',       // Verde floresta
-    bg: '#dcfce7',          // Verde suave
-    border: '#86efac'
-  },
-  Suporte: {
-    id: 'Suporte',
-    label: 'Suporte',
-    color: '#b45309',       // Âmbar / Laranja
-    bg: '#fef3c7',          // Âmbar suave
-    border: '#fcd34d'
-  },
-  Manutenção: {
-    id: 'Manutenção',
-    label: 'Manutenção',
-    color: '#b91c1c',       // Vermelho alerta
-    bg: '#fee2e2',          // Vermelho suave
-    border: '#fca5a5'
-  }
+  Locação: { id: 'Locação', label: 'Locação', color: '#1d4ed8', bg: '#dbeafe', border: '#93c5fd' },
+  Comercial: { id: 'Comercial', label: 'Comercial', color: '#15803d', bg: '#dcfce7', border: '#86efac' },
+  Suporte: { id: 'Suporte', label: 'Suporte', color: '#b45309', bg: '#fef3c7', border: '#fcd34d' },
+  Manutenção: { id: 'Manutenção', label: 'Manutenção', color: '#b91c1c', bg: '#fee2e2', border: '#fca5a5' }
 };
 
-// Equipamentos reais da Assistência Técnica VendPago
 export const EQUIPAMENTOS_PADRAO = [
   'Terminal Payblu E1223 - 3.3.9 - MDB',
   'Terminal Payblu E1223 - 4.1.1 - MDB',
@@ -59,14 +34,10 @@ export const TIPOS_SERVICO_CORREIOS = [
   'Logística Reversa'
 ];
 
-/**
- * Converte 12 hexadecimais puros em MAC formatado (xx:xx:xx:xx:xx:xx)
- */
 export const formatarMacOuSerial = (valor) => {
   if (!valor) return '';
   const limpo = valor.trim();
   const hexPuro = limpo.replace(/[^a-fA-F0-9]/g, '');
-
   if (hexPuro.length === 12 && !limpo.includes(':') && !limpo.includes('-')) {
     return hexPuro.match(/.{1,2}/g).join(':').toLowerCase();
   }
@@ -74,76 +45,132 @@ export const formatarMacOuSerial = (valor) => {
 };
 
 /**
- * Gera arquivo CSV compatível com o layout de Importação do sistema Correios
- * Colunas: Descrição;Nome;Registro;API (PPN);Nota Fiscal;CEP;UF;Endereço (Logradouro);n.o;S/N;Bairro;Adic;Vlr Decl;C Custos
+ * Utilitário de sanitização para respeitar estritamente os tipos do Correios
+ */
+const sanitize = (val, maxLen = null, numericOnly = false) => {
+  if (!val) return '';
+  let str = String(val).trim().replace(/;/g, ' '); // Semicolon quebra CSV
+  if (numericOnly) {
+    str = str.replace(/\D/g, '');
+  }
+  if (maxLen && str.length > maxLen) {
+    str = str.substring(0, maxLen).trim();
+  }
+  return str;
+};
+
+/**
+ * Exportador CSV 100% aderente ao layout VENDPAGO_AT da AGF
  */
 export const exportarParaCsvCorreios = (envios = []) => {
-  if (!envios || !envios.length) return;
+  if (!envios.length) return;
 
-  const colunas = [
-    'Descrição',
+  // Cabeçalho compatível com Linhas de Cabeçalho = 1
+  const cabecalho = [
     'Nome',
-    'Registro',
-    'API (PPN)',
-    'Nota Fiscal',
-    'CEP',
-    'UF',
-    'Endereço (Logradouro)',
-    'n.o',
-    'S/N',
+    'Endereco',
+    'Numero',
+    'Complemento',
     'Bairro',
-    'Adic',
-    'Vlr Decl',
-    'C Custos'
+    'Cidade',
+    'UF',
+    'CEP',
+    'Servico',
+    'Peso_g',
+    'Nota_Fiscal',
+    'Valor_Decl',
+    'Descricao_Conteudo',
+    'Quantidade'
   ];
 
   const linhas = envios.map((item) => {
-    // Monta a descrição com base nos itens detalhados ou no conteúdo geral
-    let desc = '';
-    if (item.itens && Array.isArray(item.itens) && item.itens.length > 0) {
-      desc = item.itens
+    // 1. Destino C(55)
+    const nome = sanitize(item.destinatario, 55);
+
+    // 2. Endereço C(55)
+    const endereco = sanitize(item.logradouro || item.endereco, 55);
+
+    // 3. Número N(6)
+    const numero = item.semNumero ? '0' : sanitize(item.numero, 6, true) || '0';
+
+    // 4. Complemento C(55)
+    const complemento = sanitize(item.complemento, 55);
+
+    // 5. Bairro C(55)
+    const bairro = sanitize(item.bairro, 55);
+
+    // 6. Cidade C(40)
+    const cidade = sanitize(item.cidade, 40);
+
+    // 7. UF C(2)
+    const uf = sanitize(item.uf, 2).toUpperCase();
+
+    // 8. CEP N(8) - Somente os 8 números, sem hífen
+    const cep = sanitize(item.cep, 8, true);
+
+    // 9. Serviço C(15) - Ex: SEDEX ou PAC
+    const servico = sanitize(item.tipoEnvio || 'SEDEX', 15);
+
+    // 10. Peso N(5.0) - Inteiro em gramas
+    const peso = sanitize(item.pesoGramas || '500', 5, true) || '500';
+
+    // 11. Nota Fiscal C(15)
+    const nfeVal = item.nfe && item.nfe.toLowerCase() !== 'a ser informado'
+      ? item.nfe
+      : (item.chamado || '');
+    const nfe = sanitize(nfeVal, 15);
+
+    // 12. Valor Declarado N(9.2) - Duas casas decimais
+    const valorDeclRaw = String(item.valorDeclarado || '1500.00').replace(',', '.').replace(/[^\d.]/g, '');
+    const valorDecl = Number(valorDeclRaw || 0).toFixed(2);
+
+    // 13. Descrição do Conteúdo C(40) - Trava rígida de 40 caracteres
+    // Prioriza montar resumo curto e informativo para caber nos 40 chars
+    let descCurta = '';
+    if (Array.isArray(item.itens) && item.itens.length > 0) {
+      descCurta = item.itens
         .map((it) => {
           const nomeFinal = it.isCustom ? (it.nomeCustom || '').trim() : it.nome;
-          return `${it.qtd || 1}x ${nomeFinal}`;
+          // Abrevia termos longos para otimizar os 40 caracteres
+          const abreviado = nomeFinal
+            .replace(/Terminal /i, '')
+            .replace(/Kit /i, '')
+            .replace(/Fonte Auxiliar /i, 'Fonte ');
+          return `${it.qtd || 1}x ${abreviado}`;
         })
         .filter(Boolean)
         .join(' + ');
     } else {
-      desc = item.conteudo || '';
+      descCurta = item.conteudo || '';
     }
-    desc = desc.replace(/;/g, ' - ');
+    const descricao = sanitize(descCurta, 40);
 
-    const nome = (item.destinatario || item.nomeDestinatario || '').replace(/;/g, ' ');
-    const nfe = item.nfe && item.nfe.toLowerCase() !== 'a ser informado' ? item.nfe : (item.chamado || '');
-    const cep = (item.cep || '').replace(/\D/g, '');
-    const uf = (item.uf || '').toUpperCase();
-    const logradouro = (item.logradouro || item.endereco || '').replace(/;/g, ' ');
-    const num = item.semNumero ? '' : (item.numero || 'S/N');
-    const sn = item.semNumero ? 'S' : 'N';
-    const bairro = (item.bairro || '').replace(/;/g, ' ');
-    const cCustos = (item.centroCusto || item.motivo || 'SUPORTE').toUpperCase();
-    const vlrDecl = item.valorDeclarado || '';
+    // 14. Quantidade N(6)
+    const totalQtd = Array.isArray(item.itens) && item.itens.length > 0
+      ? item.itens.reduce((acc, cur) => acc + (Number(cur.qtd) || 1), 0)
+      : 1;
 
     return [
-      `"${desc}"`,
       `"${nome}"`,
-      `""`,
-      `""`,
-      `"${nfe}"`,
-      `"${cep}"`,
-      `"${uf}"`,
-      `"${logradouro}"`,
-      `"${num}"`,
-      `"${sn}"`,
+      `"${endereco}"`,
+      `"${numero}"`,
+      `"${complemento}"`,
       `"${bairro}"`,
-      `""`,
-      `"${vlrDecl}"`,
-      `"${cCustos}"`
+      `"${cidade}"`,
+      `"${uf}"`,
+      `"${cep}"`,
+      `"${servico}"`,
+      `"${peso}"`,
+      `"${nfe}"`,
+      `"${valorDecl}"`,
+      `"${descricao}"`,
+      `"${totalQtd}"`
     ].join(';');
   });
 
-  const conteudoCsv = '\uFEFF' + [colunas.join(';'), ...linhas].join('\r\n');
-  const blob = new Blob([conteudoCsv], { type: 'text/csv;charset=utf-8;' });
+  // Codificação com BOM UTF-8 (\uFEFF) para preservar acentuação no Windows
+  const csvCompleto = '\uFEFF' + [cabecalho.join(';'), ...linhas].join('\r\n');
+  const blob = new Blob([csvCompleto], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);

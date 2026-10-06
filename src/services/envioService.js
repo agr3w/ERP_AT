@@ -13,7 +13,7 @@ import {
 import { db } from "./firebaseConfig";
 
 const COLLECTION_NAME = "envios";
-const LOCAL_STORAGE_KEY = "vendpago_erp_envios_v4";
+const LOCAL_STORAGE_KEY = "vendpago_erp_envios_v5";
 
 /**
  * Calcula a diferença em dias entre a data de cadastro e a data atual para itens
@@ -104,31 +104,32 @@ const SEED_ENVIOS = [
     id: "seed-1",
     data: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 3 dias atrás (> 48h)
     rastreio: "",
-    conteudo: "1x Terminal Payblu E1223 - 3.3.9 - MDB + 1x Kit Cabo MDB-Y",
+    conteudo: "1x Payblu E1223 + 1x Cabo MDB-Y",
     itens: [
-      { qtd: 1, nome: "Terminal Payblu E1223 - 3.3.9 - MDB", isCustom: false, nomeCustom: "" },
+      { qtd: 1, nome: "Terminal Payblu E1223 - 4.1.1 - MDB", isCustom: false, nomeCustom: "" },
       { qtd: 1, nome: "Kit Cabo MDB-Y", isCustom: false, nomeCustom: "" }
     ],
     mac: "b0:cb:d8:5f:d1:c2",
-    destinatario: "Lavanderia Express Moema",
-    cep: "04523-010",
-    logradouro: "Av. Moema",
-    numero: "150",
+    destinatario: "Michele Bomfim Andrade",
+    cep: "37415-068",
+    logradouro: "Rua Vereador Inácio Resck",
+    numero: "147",
     semNumero: false,
-    complemento: "Loja 2",
-    bairro: "Moema",
-    cidade: "São Paulo",
-    uf: "SP",
-    centroCusto: "LOCAÇÃO",
-    pesoGramas: "650",
+    complemento: "",
+    bairro: "Residencial Dharma",
+    cidade: "Três Corações",
+    uf: "MG",
+    centroCusto: "SUPORTE",
+    pesoGramas: "500",
+    valorDeclarado: "1500.00",
     testado: true,
-    nfe: "A ser informado",
-    chamado: "#10842",
-    linkChamado: "https://vendpago.atlassian.net/browse/AT-10842",
+    nfe: "155807",
+    chamado: "#155807",
+    linkChamado: "https://vendpago.atlassian.net/browse/AT-155807",
     tipoEnvio: "SEDEX",
-    endereco: "Av. Moema, 150 - Loja 2 - Moema, São Paulo - SP, CEP: 04523-010",
-    motivo: "Locação",
-    observacoes: "Equipamento testado e aprovado. Aguardando emissão da NF fiscal pelo faturamento.",
+    endereco: "Rua Vereador Inácio Resck, 147 - Residencial Dharma, Três Corações - MG, CEP: 37415-068",
+    motivo: "Suporte",
+    observacoes: "Equipamento revisado e testado.",
     doubleCheck: true,
     enviado: false,
     criadoEm: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
