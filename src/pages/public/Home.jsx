@@ -154,14 +154,6 @@ export default function Home() {
               <span>Dashboard</span>
             </button>
           </nav>
-
-          {/* Status Operacional */}
-          <div className={styles.headerRight}>
-            <div className={styles.statusIndicator}>
-              <div className={styles.statusDot} />
-              <span>Bancada Conectada</span>
-            </div>
-          </div>
         </div>
       </header>
 

@@ -17,7 +17,11 @@ import {
   Box,
   ClipboardList,
   Check,
-  Calculator
+  Calculator,
+  ExternalLink,
+  Building2,
+  Package,
+  Truck
 } from "lucide-react";
 import { createEnvio, updateEnvio } from "../../services/envioService";
 import {
@@ -29,7 +33,8 @@ import {
   abrirCalculoOficialCorreios,
   CEP_ORIGEM_VENDPAGO,
   formatarDataBR,
-  dataParaInputDate
+  dataParaInputDate,
+  extrairDadosChamadoBitrix
 } from "../../constants/envioConfig";
 import styles from "./FormEnvioRapido.module.css";
 
@@ -403,6 +408,16 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
     });
   };
 
+  // Função para tratar colagem ou digitação no campo de Chamado com auto-parser do Bitrix
+  const handleChamadoInput = (valor) => {
+    const { chamado, linkChamado } = extrairDadosChamadoBitrix(valor);
+    setFormData((prev) => ({
+      ...prev,
+      chamado: chamado,
+      linkChamado: linkChamado || prev.linkChamado
+    }));
+  };
+
   const handleSimularCorreios = () => {
     const cepLimpo = (formData.cep || "").replace(/\D/g, "");
     if (cepLimpo.length !== 8) {
@@ -478,6 +493,7 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
       }
     });
 
+    const isRetirada = formData.tipoEnvio === "Retirada na VendPago";
     const logr = formData.logradouro || "";
     const num = formData.semNumero ? "S/N" : (formData.numero || "");
     const comp = formData.complemento ? ` - ${formData.complemento}` : "";
@@ -485,7 +501,10 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
     const cid = formData.cidade || "";
     const uf = formData.uf || "";
     const cep = formData.cep || "";
-    const enderecoConsolidado = `${logr}${num ? ", " + num : ""}${comp} - ${brr}, ${cid} - ${uf}, CEP: ${cep}`.trim();
+    let enderecoConsolidado = `${logr}${num ? ", " + num : ""}${comp} - ${brr}, ${cid} - ${uf}, CEP: ${cep}`.trim();
+    if (isRetirada && (!logr && !cep)) {
+      enderecoConsolidado = "Retirada no Balcão - Sede VendPago";
+    }
 
     const payload = {
       ...formData,
@@ -523,6 +542,7 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
   };
 
   const motivoSelecionado = MOTIVOS[formData.motivo];
+  const isRetirada = formData.tipoEnvio === "Retirada na VendPago";
 
   return (
     <div className={styles.container}>
@@ -547,33 +567,7 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
             <X size={15} /> Cancelar Edição
           </button>
         )}
-      </div>
-
-      {/* Régua de Fluxo Visual (Stepper da Esteira) */}
-      <div className={styles.flowBar}>
-        <div className={`${styles.flowStep} ${styles.flowStepBlue}`}>
-          <span className={styles.stepNum}>1</span>
-          <span className={styles.stepLabel}>Chamado & Triagem</span>
-        </div>
-        <div className={styles.flowArrow}>➔</div>
-
-        <div className={`${styles.flowStep} ${styles.flowStepPurple}`}>
-          <span className={styles.stepNum}>2</span>
-          <span className={styles.stepLabel}>Itens & MACs</span>
-        </div>
-        <div className={styles.flowArrow}>➔</div>
-
-        <div className={`${styles.flowStep} ${styles.flowStepGreen}`}>
-          <span className={styles.stepNum}>3</span>
-          <span className={styles.stepLabel}>Destinatário & CEP</span>
-        </div>
-        <div className={styles.flowArrow}>➔</div>
-
-        <div className={`${styles.flowStep} ${styles.flowStepAmber}`}>
-          <span className={styles.stepNum}>4</span>
-          <span className={styles.stepLabel}>Expedição & Fiscal</span>
-        </div>
-      </div>
+      </div>  
 
       {statusMessage.text && (
         <div className={statusMessage.type === "success" ? styles.bannerSuccess : styles.bannerError}>
@@ -588,20 +582,76 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
       )}
 
       <form onSubmit={handleSubmit} className={styles.formWrapper}>
-        {/* ETAPA 1: ORIGEM & CHAMADO (AZUL) */}
+        {/* ETAPA 1: TRIAGEM BITRIX & IDENTIFICAÇÃO RÁPIDA (TOPO) */}
         <section className={`${styles.cardSection} ${styles.sectionBlue}`}>
           <header className={styles.sectionHeader}>
             <div className={styles.stepBadge}>1</div>
-            <FileText size={16} className={styles.sectionIcon} />
+            <Zap size={16} className={styles.sectionIcon} />
             <div>
-              <h3 className={styles.sectionHeading}>Origem & Chamado de Suporte</h3>
-              <span className={styles.sectionSub}>Identificação inicial da demanda e motivo do envio</span>
+              <h3 className={styles.sectionHeading}>Triagem Rápida do Bitrix</h3>
+              <span className={styles.sectionSub}>Cole o cliente e o link do ticket para preenchimento imediato</span>
             </div>
           </header>
 
           <div className={styles.grid}>
-            <div className={`${styles.fieldGroup} ${styles.col3}`}>
-              <label className={styles.label}>Data do Pacote *</label>
+            {/* Campo 1: OPERADOR / CLIENTE */}
+            <div className={`${styles.fieldGroup} ${styles.col5}`}>
+              <label className={styles.label} htmlFor="destinatario">
+                Operador / Cliente (Destino do Equipamento) *
+              </label>
+              <input
+                id="destinatario"
+                type="text"
+                name="destinatario"
+                placeholder="Ctrl+V do nome do cliente no Bitrix..."
+                className={`${styles.input} ${styles.inputDestacado}`}
+                value={formData.destinatario}
+                onChange={handleChange}
+                required
+                autoFocus
+              />
+            </div>
+
+            {/* Campo 2: CHAMADO / LINK BITRIX COM PARSER AUTOMÁTICO */}
+            <div className={`${styles.fieldGroup} ${styles.col5}`}>
+              <div className={styles.labelRow}>
+                <label className={styles.label} htmlFor="chamado">
+                  Chamado / Link do Bitrix *
+                </label>
+                {formData.linkChamado && (
+                  <a
+                    href={formData.linkChamado}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.linkBitrixBadge}
+                    title="Abrir ticket no Bitrix24"
+                  >
+                    Abrir Bitrix #{formData.chamado || ""} <ExternalLink size={11} />
+                  </a>
+                )}
+              </div>
+              <input
+                id="chamado"
+                type="text"
+                name="chamado"
+                placeholder="Cole o link do deal (.../details/155909/) ou o Nº..."
+                className={styles.input}
+                value={formData.chamado}
+                onChange={(e) => handleChamadoInput(e.target.value)}
+                onPaste={(e) => {
+                  const pastedText = e.clipboardData?.getData("text");
+                  if (pastedText && (pastedText.includes("bitrix") || pastedText.includes("http") || pastedText.includes("/"))) {
+                    e.preventDefault();
+                    handleChamadoInput(pastedText);
+                  }
+                }}
+                required
+              />
+            </div>
+
+            {/* Campo 3: DATA (Padrão hoje) */}
+            <div className={`${styles.fieldGroup} ${styles.col2}`}>
+              <label className={styles.label}>Data</label>
               <input
                 type="date"
                 name="data"
@@ -612,49 +662,80 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
               />
             </div>
 
-            <div className={`${styles.fieldGroup} ${styles.col3}`}>
-              <label className={styles.label}>Chamado / Ticket *</label>
-              <input
-                type="text"
-                name="chamado"
-                placeholder="#87911"
-                className={styles.input}
-                value={formData.chamado}
-                onChange={handleChange}
-                required
-              />
+            {/* Linha 2 de Ações Rápidas: TIPO DE ENVIO (PILLS) */}
+            <div className={`${styles.fieldGroup} ${styles.col6}`}>
+              <label className={styles.label}>Tipo de Envio (Selecione em 1 clique)</label>
+              <div className={styles.pillsContainer}>
+                {["SEDEX", "PAC", "Retirada na VendPago"].map((tipo) => {
+                  const isSelected = formData.tipoEnvio === tipo;
+                  return (
+                    <button
+                      key={tipo}
+                      type="button"
+                      className={`${styles.pillBtn} ${isSelected ? styles.pillBtnActive : ""}`}
+                      onClick={() => {
+                        setFormData((prev) => {
+                          const updated = { ...prev, tipoEnvio: tipo };
+                          if (tipo === "Retirada na VendPago" && !prev.valorFrete) {
+                            updated.valorFrete = "0,00";
+                          }
+                          return updated;
+                        });
+                      }}
+                    >
+                      {tipo === "SEDEX" && <Zap size={13} />}
+                      {tipo === "PAC" && <Package size={13} />}
+                      {tipo === "Retirada na VendPago" && <Building2 size={13} />}
+                      <span>{tipo === "Retirada na VendPago" ? "Retirada" : tipo}</span>
+                    </button>
+                  );
+                })}
+
+                {/* Dropdown compacto para outras modalidades menos frequentes */}
+                <select
+                  className={styles.selectCompacto}
+                  value={["SEDEX", "PAC", "Retirada na VendPago"].includes(formData.tipoEnvio) ? "" : formData.tipoEnvio}
+                  onChange={(e) => {
+                    if (e.target.value) setFormData((prev) => ({ ...prev, tipoEnvio: e.target.value }));
+                  }}
+                >
+                  <option value="">Outro...</option>
+                  <option value="Transportadora">Transportadora</option>
+                  <option value="Motoboy">Motoboy</option>
+                  <option value="Logística Reversa">Logística Reversa</option>
+                </select>
+              </div>
             </div>
 
-            <div className={`${styles.fieldGroup} ${styles.col3}`}>
-              <label className={styles.label}>Motivo do Envio *</label>
-              <select
-                name="motivo"
-                className={styles.select}
-                value={formData.motivo}
-                onChange={handleChange}
-                style={{
-                  borderColor: motivoSelecionado?.border,
-                  backgroundColor: motivoSelecionado?.bg,
-                  color: motivoSelecionado?.color,
-                  fontWeight: 600
-                }}
-              >
-                {Object.values(MOTIVOS).map((m) => (
-                  <option key={m.id} value={m.id}>{m.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className={`${styles.fieldGroup} ${styles.col3}`}>
-              <label className={styles.label}>Link do Chamado (CRM/Bitrix)</label>
-              <input
-                type="url"
-                name="linkChamado"
-                placeholder="https://..."
-                className={styles.input}
-                value={formData.linkChamado}
-                onChange={handleChange}
-              />
+            {/* Linha 2 de Ações Rápidas: MOTIVO COM CORES SEMÂNTICAS */}
+            <div className={`${styles.fieldGroup} ${styles.col6}`}>
+              <label className={styles.label}>Motivo do Envio</label>
+              <div className={styles.pillsContainer}>
+                {Object.values(MOTIVOS).map((m) => {
+                  const isSelected = formData.motivo === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className={styles.pillMotivoBtn}
+                      onClick={() => setFormData((prev) => ({ ...prev, motivo: m.id }))}
+                      style={{
+                        backgroundColor: isSelected ? m.color : m.bg,
+                        color: isSelected ? "#ffffff" : m.color,
+                        borderColor: m.border,
+                        fontWeight: isSelected ? 700 : 600,
+                        boxShadow: isSelected ? `0 2px 6px ${m.color}40` : "none"
+                      }}
+                    >
+                      <span
+                        className={styles.dotIndicator}
+                        style={{ backgroundColor: isSelected ? "#ffffff" : m.color }}
+                      />
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>
@@ -840,8 +921,27 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
           </header>
 
           <div className={styles.grid}>
+            {/* Aviso especial quando for Retirada no Balcão */}
+            {isRetirada && (
+              <div className={styles.avisoRetiradaBox}>
+                <Building2 size={20} className={styles.avisoRetiradaIcon} />
+                <div>
+                  <h4 className={styles.avisoRetiradaTitle}>Retirada no Balcão da VendPago</h4>
+                  <p className={styles.avisoRetiradaText}>
+                    O cliente retirará os equipamentos diretamente na sede da empresa.
+                    O preenchimento de endereço e etiqueta dos Correios é dispensado.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className={`${styles.fieldGroup} ${styles.col8}`}>
-              <label className={styles.label}>Nome Completo / Razão Social *</label>
+              <div className={styles.labelRow}>
+                <label className={styles.label}>Nome Completo / Razão Social *</label>
+                <span className={styles.tagSincronizado}>
+                  ✓ Sincronizado do Topo
+                </span>
+              </div>
               <input
                 type="text"
                 name="destinatario"
@@ -855,7 +955,7 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
 
             <div className={`${styles.fieldGroup} ${styles.col4}`}>
               <div className={styles.labelRow}>
-                <label className={styles.label}>CEP *</label>
+                <label className={styles.label}>CEP {isRetirada ? "(Opcional)" : "*"}</label>
                 {loadingCep && <span className={styles.tagCepLoading}>Buscando CEP...</span>}
               </div>
               <div className={styles.inputWrapper}>
@@ -867,7 +967,7 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
                   value={formData.cep}
                   onChange={handleCepChange}
                   onBlur={() => buscarCep(formData.cep)}
-                  required
+                  required={!isRetirada}
                 />
                 <button
                   type="button"
@@ -881,7 +981,7 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
             </div>
 
             <div className={`${styles.fieldGroup} ${styles.col7}`}>{/* Logradouro */}
-              <label className={styles.label}>Endereço (Logradouro) *</label>
+              <label className={styles.label}>Endereço (Logradouro) {isRetirada ? "(Opcional)" : "*"}</label>
               <input
                 type="text"
                 name="logradouro"
@@ -889,13 +989,13 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
                 className={styles.input}
                 value={formData.logradouro}
                 onChange={handleChange}
-                required
+                required={!isRetirada}
               />
             </div>
 
             <div className={`${styles.fieldGroup} ${styles.col2}`}>
               <div className={styles.labelRow}>
-                <label className={styles.label}>N.º *</label>
+                <label className={styles.label}>N.º {isRetirada ? "(Opcional)" : "*"}</label>
                 <label className={styles.checkboxInline}>
                   <input
                     type="checkbox"
@@ -930,7 +1030,7 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
             </div>
 
             <div className={`${styles.fieldGroup} ${styles.col5}`}>
-              <label className={styles.label}>Bairro *</label>
+              <label className={styles.label}>Bairro {isRetirada ? "(Opcional)" : "*"}</label>
               <input
                 type="text"
                 name="bairro"
@@ -938,12 +1038,12 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
                 className={styles.input}
                 value={formData.bairro}
                 onChange={handleChange}
-                required
+                required={!isRetirada}
               />
             </div>
 
             <div className={`${styles.fieldGroup} ${styles.col5}`}>
-              <label className={styles.label}>Cidade *</label>
+              <label className={styles.label}>Cidade {isRetirada ? "(Opcional)" : "*"}</label>
               <input
                 type="text"
                 name="cidade"
@@ -951,12 +1051,12 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
                 className={styles.input}
                 value={formData.cidade}
                 onChange={handleChange}
-                required
+                required={!isRetirada}
               />
             </div>
 
             <div className={`${styles.fieldGroup} ${styles.col2}`}>
-              <label className={styles.label}>UF *</label>
+              <label className={styles.label}>UF {isRetirada ? "(Opcional)" : "*"}</label>
               <input
                 type="text"
                 name="uf"
@@ -965,7 +1065,7 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
                 className={styles.input}
                 value={formData.uf}
                 onChange={handleChange}
-                required
+                required={!isRetirada}
                 style={{ textTransform: "uppercase" }}
               />
             </div>

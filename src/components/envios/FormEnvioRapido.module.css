@@ -852,3 +852,148 @@
   background-color: #f8fafc;
   border-top: 1px solid var(--vp-border-light);
 }
+
+/* Input com destaque suave para colagem rápida */
+.inputDestacado {
+  font-weight: 600;
+  color: var(--vp-navy-dark);
+  border-color: #93c5fd;
+  background-color: #f8fafc;
+}
+
+.inputDestacado:focus {
+  background-color: #ffffff;
+  border-color: var(--vp-blue-primary);
+}
+
+/* Badge com link externo do Bitrix */
+.linkBitrixBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--vp-blue-primary);
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--vp-radius-sm);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.linkBitrixBadge:hover {
+  background-color: #dbeafe;
+}
+
+/* Container de Pills de 1 Clique */
+.pillsContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.pillBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 34px;
+  padding: 0 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--vp-radius-sm);
+  color: var(--vp-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.pillBtn:hover {
+  background-color: #e2e8f0;
+}
+
+.pillBtnActive {
+  background-color: var(--vp-navy-dark);
+  border-color: var(--vp-navy-dark);
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 30, 64, 0.2);
+}
+
+/* Pills coloridas de Motivo */
+.pillMotivoBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 34px;
+  padding: 0 0.85rem;
+  font-size: 0.8rem;
+  border: 1px solid;
+  border-radius: var(--vp-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.dotIndicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.selectCompacto {
+  height: 34px;
+  padding: 0 0.5rem;
+  font-size: 0.78rem;
+  color: var(--vp-text-secondary);
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--vp-radius-sm);
+  cursor: pointer;
+}
+
+/* Aviso de Retirada na VendPago (Balcão) */
+.avisoRetiradaBox {
+  grid-column: span 12;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background-color: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: var(--vp-radius-sm);
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.avisoRetiradaIcon {
+  color: #16a34a;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.avisoRetiradaTitle {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #15803d;
+  margin: 0 0 0.2rem 0;
+}
+
+.avisoRetiradaText {
+  font-size: 0.8rem;
+  color: #166534;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.tagSincronizado {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #0284c7;
+  background-color: #e0f2fe;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid #bae6fd;
+}

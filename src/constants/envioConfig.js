@@ -220,6 +220,40 @@ export const equipamentoRequerMac = (nome) => {
   );
 };
 
+/**
+ * Extrai automaticamente o número do deal/chamado a partir de URLs do Bitrix24
+ * Ex: https://vendpago.bitrix24.com.br/crm/deal/details/155909/ -> "155909"
+ * Se for digitado apenas o número "155909", monta o link padrão automaticamente.
+ */
+export const extrairDadosChamadoBitrix = (valor) => {
+  if (!valor) return { chamado: "", linkChamado: "" };
+  const str = String(valor).trim();
+
+  // 1. Detecta URL do Bitrix com /details/NUMERO/ ou /deal/NUMERO/
+  const matchUrl = str.match(/details\/(\d+)/i) || str.match(/deal\/(\d+)/i);
+  if (matchUrl) {
+    const id = matchUrl[1];
+    return {
+      chamado: id,
+      linkChamado: str.startsWith("http") ? str : `https://${str}`
+    };
+  }
+
+  // 2. Se colou apenas os dígitos (ex: "155909" ou "#155909")
+  const apenasNumeros = str.replace(/\D/g, "");
+  if (apenasNumeros.length >= 4) {
+    return {
+      chamado: apenasNumeros,
+      linkChamado: `https://vendpago.bitrix24.com.br/crm/deal/details/${apenasNumeros}/`
+    };
+  }
+
+  return {
+    chamado: str,
+    linkChamado: str.startsWith("http") ? str : ""
+  };
+};
+
 export const formatarMacOuSerial = (valor) => {
   if (!valor) return '';
   const limpo = valor.trim();
