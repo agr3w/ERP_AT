@@ -98,6 +98,39 @@ export const dataParaInputDate = (dataVal) => {
 };
 
 /**
+ * Converte qualquer representação de data para milissegundos cronológicos.
+ * Garante que 30/09/2026 venha antes de 06/10/2026 em ordenações numéricas.
+ */
+export const obterTimestampData = (dataVal) => {
+  if (!dataVal) return 0;
+  if (dataVal instanceof Date) return dataVal.getTime();
+  if (dataVal.toDate && typeof dataVal.toDate === 'function') return dataVal.toDate().getTime();
+
+  if (typeof dataVal === 'string') {
+    const limpo = dataVal.trim();
+
+    // 1. Padrão Brasileiro: DD/MM/YYYY ou DD-MM-YYYY
+    const brMatch = limpo.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+    if (brMatch) {
+      const [, dd, mm, yyyy] = brMatch;
+      return new Date(Number(yyyy), Number(mm) - 1, Number(dd)).getTime();
+    }
+
+    // 2. Padrão ISO: YYYY-MM-DD
+    const isoMatch = limpo.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+    if (isoMatch) {
+      const [, yyyy, mm, dd] = isoMatch;
+      return new Date(Number(yyyy), Number(mm) - 1, Number(dd)).getTime();
+    }
+
+    const parsed = Date.parse(limpo);
+    if (!isNaN(parsed)) return parsed;
+  }
+
+  return 0;
+};
+
+/**
  * Abre diretamente a tela oficial de cálculo de preços e prazos dos Correios
  * com os dados já preenchidos (origem VendPago, destino cliente, dimensões e peso)
  */

@@ -25,6 +25,7 @@ import {
   ChevronUp,
   ChevronDown,
   ArrowUpDown,
+  RotateCcw,
   Save
 } from "lucide-react";
 import {
@@ -39,7 +40,8 @@ import {
   abrirCalculoOficialCorreios,
   gerarTextoCobrancaBitrix,
   CEP_ORIGEM_VENDPAGO,
-  formatarDataBR
+  formatarDataBR,
+  obterTimestampData
 } from "../../constants/envioConfig";
 import styles from "./BacklogEnvios.module.css";
 
@@ -88,16 +90,96 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
   const [valorInputNfe, setValorInputNfe] = useState("");
   const [salvandoNfe, setSalvandoNfe] = useState(false);
 
-  // Ordenação Rápida e Drag & Drop
-  const [criterioOrdenacao, setCriterioOrdenacao] = useState("nfe_primeiro"); // "nfe_primeiro" | "sem_nfe_primeiro" | "recentes" | "antigos" | "tipo_envio" | "manual"
+  // Fechar qualquer modal ativo ao pressionar a tecla Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (itemDetalhes) setItemDetalhes(null);
+        else if (itemModalNfe) setItemModalNfe(null);
+        else if (itemParaConcluir) setItemParaConcluir(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [itemDetalhes, itemModalNfe, itemParaConcluir]);
+
+  // Estado de ordenação da coluna: { key: string | null, direction: 'asc' | 'desc' | null }
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
   const [ordemManualIds, setOrdemManualIds] = useState([]);
   const [draggedIndex, setDraggedIndex] = useState(null);
+
+  // Alternador de ciclo: Desc -> Asc -> Padrão
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key !== key) {
+        return { key, direction: "desc" };
+      }
+      if (prev.direction === "desc") {
+        return { key, direction: "asc" };
+      }
+      // Volta ao padrão da bancada
+      return { key: null, direction: null };
+    });
+  };
+
+  // Renderizador do ícone de direção na coluna
+  const renderSortIcon = (colKey) => {
+    if (sortConfig.key !== colKey) {
+      return <ArrowUpDown size={12} className={styles.sortIconInactive} />;
+    }
+    if (sortConfig.direction === "asc") {
+      return <ChevronUp size={14} className={styles.sortIconActive} />;
+    }
+    return <ChevronDown size={14} className={styles.sortIconActive} />;
+  };
 
   // Helper para verificar se a NF-e já foi anexada/informada
   const temNfeAnexada = (item) => {
     if (!item || !item.nfe) return false;
     const n = String(item.nfe).trim().toLowerCase();
     return n !== "" && n !== "a ser informado" && n !== "a ser informada";
+  };
+
+  // ESTADO DE SELEÇÃO PARA EXPORTAÇÃO CORREIOS
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
+  // Limpa seleções ao alternar entre abas
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [activeTab]);
+
+  // Alterna seleção de um card individual
+  const handleToggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Alterna selecionar todos os itens exibidos na lista atual
+  const handleToggleSelectAll = () => {
+    if (selectedIds.size === listaExibida.length && listaExibida.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(listaExibida.map((item) => item.id)));
+    }
+  };
+
+  // Atalho: Seleciona em 1 clique apenas quem tem NF-e emitida
+  const handleSelecionarApenasComNfe = () => {
+    const idsComNfe = listaExibida
+      .filter((item) => temNfeAnexada(item))
+      .map((item) => item.id);
+    setSelectedIds(new Set(idsComNfe));
+  };
+
+  const handleLimparSelecao = () => {
+    setSelectedIds(new Set());
   };
 
   // Abre modal rápido para anexar ou editar NF-e
@@ -154,7 +236,7 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
 
     const novosIds = novaLista.map((it) => it.id);
     setOrdemManualIds(novosIds);
-    setCriterioOrdenacao("manual");
+    setSortConfig({ key: null, direction: null });
     setDraggedIndex(null);
   };
 
@@ -168,7 +250,7 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
 
     const novosIds = novaLista.map((it) => it.id);
     setOrdemManualIds(novosIds);
-    setCriterioOrdenacao("manual");
+    setSortConfig({ key: null, direction: null });
   };
 
   // Copia múltiplos MACs no padrão exato do ERP: mac1 - mac2 - mac3
@@ -223,8 +305,8 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
   const listaExibida = useMemo(() => {
     const base = activeTab === "pendentes" ? pendentes : concluidos;
 
+    // 1. Filtragem por busca e critérios
     const filtrados = base.filter((item) => {
-      // Filtro de texto
       const term = searchQuery.toLowerCase().trim();
       const matchText =
         !term ||
@@ -237,49 +319,68 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
         (item.nfe && item.nfe.toLowerCase().includes(term)) ||
         (item.motivo && item.motivo.toLowerCase().includes(term));
 
-      // Filtro por tipo de envio
       const matchTipo = tipoFiltro === "TODOS" || item.tipoEnvio === tipoFiltro;
-
-      // Filtro de gargalo > 48h
-      const matchAtraso =
-        !apenasAtrasados48h ||
-        (activeTab === "pendentes" && item.diasAguardandoNfe >= 2);
+      const matchAtraso = !apenasAtrasados48h || (activeTab === "pendentes" && item.diasAguardandoNfe >= 2);
 
       return matchText && matchTipo && matchAtraso;
     });
 
     const listaOrdenada = [...filtrados];
 
-    if (criterioOrdenacao === "manual" && ordemManualIds.length > 0) {
-      listaOrdenada.sort((a, b) => {
-        const idxA = ordemManualIds.indexOf(a.id);
-        const idxB = ordemManualIds.indexOf(b.id);
-        if (idxA === -1 && idxB === -1) return 0;
-        if (idxA === -1) return 1;
-        if (idxB === -1) return -1;
-        return idxA - idxB;
-      });
-    } else if (criterioOrdenacao === "nfe_primeiro") {
-      listaOrdenada.sort((a, b) => {
-        const aTem = temNfeAnexada(a) ? 1 : 0;
-        const bTem = temNfeAnexada(b) ? 1 : 0;
-        if (bTem !== aTem) return bTem - aTem; // Com NF-e primeiro
-        return (b.data || "").localeCompare(a.data || "");
-      });
-    } else if (criterioOrdenacao === "sem_nfe_primeiro") {
-      listaOrdenada.sort((a, b) => {
-        const aTem = temNfeAnexada(a) ? 1 : 0;
-        const bTem = temNfeAnexada(b) ? 1 : 0;
-        if (aTem !== bTem) return aTem - bTem; // Sem NF-e primeiro
-        return (b.data || "").localeCompare(a.data || "");
-      });
-    } else if (criterioOrdenacao === "recentes") {
-      listaOrdenada.sort((a, b) => (b.data || "").localeCompare(a.data || ""));
-    } else if (criterioOrdenacao === "antigos") {
-      listaOrdenada.sort((a, b) => (a.data || "").localeCompare(b.data || ""));
-    } else if (criterioOrdenacao === "tipo_envio") {
-      listaOrdenada.sort((a, b) => (a.tipoEnvio || "").localeCompare(b.tipoEnvio || ""));
+    // 2. Se nenhuma coluna foi clicada (padrão da bancada / manual se houver)
+    if (!sortConfig.key || !sortConfig.direction) {
+      if (ordemManualIds.length > 0) {
+        listaOrdenada.sort((a, b) => {
+          const idxA = ordemManualIds.indexOf(a.id);
+          const idxB = ordemManualIds.indexOf(b.id);
+          if (idxA === -1 && idxB === -1) return 0;
+          if (idxA === -1) return 1;
+          if (idxB === -1) return -1;
+          return idxA - idxB;
+        });
+      }
+      return listaOrdenada;
     }
+
+    // 3. Ordenação ativa por coluna
+    const { key, direction } = sortConfig;
+    const multiplicador = direction === "asc" ? 1 : -1;
+
+    listaOrdenada.sort((a, b) => {
+      if (key === "data") {
+        const timeA = obterTimestampData(a.data);
+        const timeB = obterTimestampData(b.data);
+        return (timeA - timeB) * multiplicador;
+      }
+
+      if (key === "chamado") {
+        const numA = Number(String(a.chamado || "").replace(/\D/g, "")) || 0;
+        const numB = Number(String(b.chamado || "").replace(/\D/g, "")) || 0;
+        if (numA && numB) return (numA - numB) * multiplicador;
+        return String(a.chamado || "").localeCompare(String(b.chamado || "")) * multiplicador;
+      }
+
+      if (key === "destinatario") {
+        return String(a.destinatario || "").localeCompare(String(b.destinatario || "")) * multiplicador;
+      }
+
+      if (key === "motivo") {
+        return String(a.motivo || "").localeCompare(String(b.motivo || "")) * multiplicador;
+      }
+
+      if (key === "tipoEnvio") {
+        return String(a.tipoEnvio || "").localeCompare(String(b.tipoEnvio || "")) * multiplicador;
+      }
+
+      if (key === "nfe") {
+        const aTem = temNfeAnexada(a) ? 1 : 0;
+        const bTem = temNfeAnexada(b) ? 1 : 0;
+        if (aTem !== bTem) return (aTem - bTem) * multiplicador;
+        return (Number(b.diasAguardandoNfe || 0) - Number(a.diasAguardandoNfe || 0)) * multiplicador;
+      }
+
+      return 0;
+    });
 
     return listaOrdenada;
   }, [
@@ -289,9 +390,21 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
     searchQuery,
     tipoFiltro,
     apenasAtrasados48h,
-    criterioOrdenacao,
+    sortConfig,
     ordemManualIds
   ]);
+
+  // Itens que serão enviados para a função de exportação CSV
+  const itensParaExportar = useMemo(() => {
+    if (selectedIds.size > 0) {
+      return listaExibida.filter((item) => selectedIds.has(item.id));
+    }
+    return listaExibida;
+  }, [listaExibida, selectedIds]);
+
+  const totalComNfeNaLista = useMemo(() => {
+    return listaExibida.filter((item) => temNfeAnexada(item)).length;
+  }, [listaExibida]);
 
   // Abertura do modal de conclusão rápida
   const abrirModalConcluir = (item) => {
@@ -456,13 +569,21 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
         <div className={styles.actionsRight}>
           <button
             type="button"
-            className={styles.btnExportCorreios}
-            onClick={() => exportarParaCsvCorreios(listaExibida)}
-            title="Exportar lote formatado para importação nos Correios (CSV)"
-            disabled={listaExibida.length === 0}
+            className={`${styles.btnExportCorreios} ${selectedIds.size > 0 ? styles.btnExportSelected : ""}`}
+            onClick={() => exportarParaCsvCorreios(itensParaExportar)}
+            title={
+              selectedIds.size > 0
+                ? `Exportar ${selectedIds.size} equipamento(s) selecionado(s) para os Correios`
+                : "Exportar todos os registros visíveis para os Correios"
+            }
+            disabled={itensParaExportar.length === 0}
           >
             <Download size={14} />
-            <span>Exportar Correios (CSV)</span>
+            <span>
+              {selectedIds.size > 0
+                ? `Exportar Selecionados (${selectedIds.size}) - CSV`
+                : `Exportar Correios (Todos - ${listaExibida.length})`}
+            </span>
           </button>
 
           {onNavigateToNew && (
@@ -560,119 +681,161 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
         </div>
       </div>
 
-      {/* Barra de Ordenação Rápida da Bancada */}
-      <div className={styles.sortBar}>
-        <div className={styles.sortBarTitle}>
-          <ArrowUpDown size={14} />
-          <span>Ordenar Bancada:</span>
+      {/* Barra de Ações Rápidas de Lote (aparece quando há opções ou seleção) */}
+      {activeTab === "pendentes" && listaExibida.length > 0 && (
+        <div className={styles.batchActionBar}>
+          <div className={styles.batchInfo}>
+            <span>Fila da Bancada: <strong>{listaExibida.length} pacote(s)</strong></span>
+            {selectedIds.size > 0 && (
+              <span className={styles.badgeSelectedCount}>
+                ✓ {selectedIds.size} selecionado(s) para o lote
+              </span>
+            )}
+          </div>
+
+          <div className={styles.batchShortcuts}>
+            {totalComNfeNaLista > 0 && (
+              <button
+                type="button"
+                className={styles.btnShortcutBatch}
+                onClick={handleSelecionarApenasComNfe}
+                title="Marcar apenas caixas prontas que já possuem NF-e"
+              >
+                <FileCheck size={13} color="var(--vp-emerald-dark)" />
+                <span>Selecionar Prontos c/ NF-e ({totalComNfeNaLista})</span>
+              </button>
+            )}
+
+            {selectedIds.size > 0 && (
+              <button
+                type="button"
+                className={styles.btnShortcutClear}
+                onClick={handleLimparSelecao}
+                title="Desmarcar todos os cards"
+              >
+                <RotateCcw size={12} />
+                <span>Limpar Seleção</span>
+              </button>
+            )}
+          </div>
         </div>
-        <div className={styles.sortButtons}>
-          <button
-            type="button"
-            className={`${styles.btnSort} ${
-              criterioOrdenacao === "nfe_primeiro" ? styles.btnSortActive : ""
-            }`}
-            onClick={() => setCriterioOrdenacao("nfe_primeiro")}
-            title="Exibir primeiro os equipamentos com NF-e anexada (prontos para despacho)"
-          >
-            <FileCheck size={13} />
-            <span>Com NF-e no Topo</span>
-          </button>
-
-          <button
-            type="button"
-            className={`${styles.btnSort} ${
-              criterioOrdenacao === "sem_nfe_primeiro" ? styles.btnSortActive : ""
-            }`}
-            onClick={() => setCriterioOrdenacao("sem_nfe_primeiro")}
-            title="Priorizar equipamentos que estão aguardando emissão da NF-e"
-          >
-            <Clock size={13} />
-            <span>Aguardando NF-e no Topo</span>
-          </button>
-
-          <button
-            type="button"
-            className={`${styles.btnSort} ${
-              criterioOrdenacao === "recentes" ? styles.btnSortActive : ""
-            }`}
-            onClick={() => setCriterioOrdenacao("recentes")}
-            title="Ordenar por data mais recente"
-          >
-            <span>Mais Recentes</span>
-          </button>
-
-          <button
-            type="button"
-            className={`${styles.btnSort} ${
-              criterioOrdenacao === "antigos" ? styles.btnSortActive : ""
-            }`}
-            onClick={() => setCriterioOrdenacao("antigos")}
-            title="Ordenar por data mais antiga"
-          >
-            <span>Mais Antigos</span>
-          </button>
-
-          <button
-            type="button"
-            className={`${styles.btnSort} ${
-              criterioOrdenacao === "tipo_envio" ? styles.btnSortActive : ""
-            }`}
-            onClick={() => setCriterioOrdenacao("tipo_envio")}
-            title="Agrupar por tipo de frete (SEDEX, PAC, Retirada)"
-          >
-            <Truck size={13} />
-            <span>Por Tipo de Frete</span>
-          </button>
-
-          {ordemManualIds.length > 0 && (
-            <button
-              type="button"
-              className={`${styles.btnSort} ${
-                criterioOrdenacao === "manual" ? styles.btnSortActive : ""
-              }`}
-              onClick={() => setCriterioOrdenacao("manual")}
-              title="Respeitar ordenação arrastada manualmente"
-            >
-              <GripVertical size={13} />
-              <span>Ordem Manual</span>
-            </button>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Tabela de Envios */}
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead>
             <tr>
-              <th className={styles.thDrag} title="Arrastar ou usar setas para reordenar na bancada"></th>
-              <th className={styles.th} style={{ minWidth: "95px" }}>Data</th>
-              <th className={styles.th}>Chamado</th>
+              {/* NOVA COLUNA 1: SELEÇÃO & CONTADOR (#) */}
+              <th className={styles.thSelect} title="Selecionar todos os visíveis">
+                <div className={styles.thSelectWrapper}>
+                  <input
+                    type="checkbox"
+                    className={styles.checkboxMaster}
+                    checked={listaExibida.length > 0 && selectedIds.size === listaExibida.length}
+                    onChange={handleToggleSelectAll}
+                    title="Marcar / Desmarcar todos"
+                  />
+                  <span className={styles.thNumberLabel}>#</span>
+                </div>
+              </th>
+
+              <th className={styles.thDrag}></th>
+
+              {/* DATA COM ORDENAÇÃO REAL */}
+              <th
+                className={`${styles.th} ${styles.thSortable}`}
+                onClick={() => handleSort("data")}
+                title="Clique para ordenar por data (Mais recentes / Mais antigos / Padrão)"
+              >
+                <div className={styles.thContent}>
+                  <span>Data</span>
+                  {renderSortIcon("data")}
+                </div>
+              </th>
+
+              {/* CHAMADO */}
+              <th
+                className={`${styles.th} ${styles.thSortable}`}
+                onClick={() => handleSort("chamado")}
+                title="Ordenar por número de chamado"
+              >
+                <div className={styles.thContent}>
+                  <span>Chamado</span>
+                  {renderSortIcon("chamado")}
+                </div>
+              </th>
+
               <th className={styles.th}>Conteúdo / MAC</th>
-              <th className={styles.th}>Motivo</th>
-              <th className={styles.th}>Destinatário</th>
-              <th className={styles.th}>Tipo / Rastreio</th>
-              <th className={styles.th}>Status NF-e</th>
+
+              {/* MOTIVO */}
+              <th
+                className={`${styles.th} ${styles.thSortable}`}
+                onClick={() => handleSort("motivo")}
+                title="Ordenar por motivo"
+              >
+                <div className={styles.thContent}>
+                  <span>Motivo</span>
+                  {renderSortIcon("motivo")}
+                </div>
+              </th>
+
+              {/* DESTINATÁRIO */}
+              <th
+                className={`${styles.th} ${styles.thSortable}`}
+                onClick={() => handleSort("destinatario")}
+                title="Ordenar por cliente/operador"
+              >
+                <div className={styles.thContent}>
+                  <span>Destinatário</span>
+                  {renderSortIcon("destinatario")}
+                </div>
+              </th>
+
+              {/* TIPO / RASTREIO */}
+              <th
+                className={`${styles.th} ${styles.thSortable}`}
+                onClick={() => handleSort("tipoEnvio")}
+                title="Ordenar por serviço de frete"
+              >
+                <div className={styles.thContent}>
+                  <span>Tipo / Rastreio</span>
+                  {renderSortIcon("tipoEnvio")}
+                </div>
+              </th>
+
+              {/* STATUS NF-E */}
+              <th
+                className={`${styles.th} ${styles.thSortable}`}
+                onClick={() => handleSort("nfe")}
+                title="Ordenar por status da NF-e"
+              >
+                <div className={styles.thContent}>
+                  <span>Status NF-e</span>
+                  {renderSortIcon("nfe")}
+                </div>
+              </th>
+
               <th className={styles.th} style={{ textAlign: "right" }}>Ações</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="9" style={{ textAlign: "center", padding: "2.5rem" }}>
+                <td colSpan="10" style={{ textAlign: "center", padding: "2.5rem" }}>
                   Carregando registros de envios...
                 </td>
               </tr>
             ) : listaExibida.length === 0 ? (
               <tr>
-                <td colSpan="9" className={styles.emptyState}>
+                <td colSpan="10" className={styles.emptyState}>
                   <Inbox className={styles.emptyIcon} />
                   <p>Nenhum registro encontrado para este filtro.</p>
                 </td>
               </tr>
             ) : (
               listaExibida.map((item, index) => {
+                const isSelected = selectedIds.has(item.id);
                 const isCritical =
                   activeTab === "pendentes" && item.diasAguardandoNfe >= 2;
                 const comNfe = temNfeAnexada(item);
@@ -687,8 +850,26 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                     onDrop={(e) => handleDrop(e, index)}
                     className={`${styles.tr} ${isCritical ? styles.trCritical : ""} ${
                       isProntoDespacho ? styles.trComNfe : ""
-                    } ${draggedIndex === index ? styles.trDragging : ""}`}
+                    } ${draggedIndex === index ? styles.trDragging : ""} ${
+                      isSelected ? styles.trSelected : ""
+                    }`}
                   >
+                    {/* CÉLULA 1: CHECKBOX DE EXPORTAÇÃO + CONTADOR #1, #2, #3 */}
+                    <td className={styles.tdSelect}>
+                      <div className={styles.selectCellWrapper}>
+                        <input
+                          type="checkbox"
+                          className={styles.checkboxRow}
+                          checked={isSelected}
+                          onChange={() => handleToggleSelect(item.id)}
+                          title={`Selecionar #${index + 1} (${item.destinatario}) para exportar aos Correios`}
+                        />
+                        <span className={`${styles.badgeIndex} ${isSelected ? styles.badgeIndexSelected : ""}`}>
+                          #{index + 1}
+                        </span>
+                      </div>
+                    </td>
+
                     <td className={styles.tdDrag}>
                       <div className={styles.dragHandleWrapper}>
                         <div
@@ -877,8 +1058,8 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
 
       {/* Modal de Conclusão Rápida */}
       {itemParaConcluir && (
-        <div className={styles.modalBackdrop}>
-          <div className={styles.modalCard}>
+        <div className={styles.modalBackdrop} onClick={() => setItemParaConcluir(null)}>
+          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <PackageCheck size={18} color="var(--vp-emerald)" />
@@ -893,7 +1074,7 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
               </button>
             </div>
 
-            <form onSubmit={handleConfirmarConclusao}>
+            <form onSubmit={handleConfirmarConclusao} className={styles.modalForm}>
               <div className={styles.modalBody}>
                 <div className={styles.modalItemSummary}>
                   <div><strong>Equipamento:</strong> {itemParaConcluir.conteudo}</div>
@@ -992,14 +1173,7 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
               <div className={styles.modalFooter}>
                 <button
                   type="button"
-                  style={{
-                    height: "36px",
-                    padding: "0 1rem",
-                    border: "1px solid var(--vp-border-default)",
-                    borderRadius: "4px",
-                    background: "#fff",
-                    cursor: "pointer"
-                  }}
+                  className={styles.btnSecondary}
                   onClick={() => setItemParaConcluir(null)}
                 >
                   Cancelar
@@ -1033,8 +1207,8 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
 
       {/* Modal Rápido: Anexar / Editar NF-e */}
       {itemModalNfe && (
-        <div className={styles.modalBackdrop}>
-          <div className={styles.modalCard} style={{ maxWidth: "460px" }}>
+        <div className={styles.modalBackdrop} onClick={() => setItemModalNfe(null)}>
+          <div className={styles.modalCard} style={{ maxWidth: "460px" }} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <FileCheck size={18} color="var(--vp-blue-primary)" />
@@ -1049,7 +1223,7 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
               </button>
             </div>
 
-            <form onSubmit={handleSalvarNfeRapido}>
+            <form onSubmit={handleSalvarNfeRapido} className={styles.modalForm}>
               <div className={styles.modalBody}>
                 <div className={styles.modalItemSummary}>
                   <div><strong>Equipamento:</strong> {itemModalNfe.conteudo}</div>
@@ -1101,8 +1275,8 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
 
       {/* Modal de Detalhes do Registro */}
       {itemDetalhes && (
-        <div className={styles.modalBackdrop}>
-          <div className={styles.modalCard} style={{ maxWidth: "560px" }}>
+        <div className={styles.modalBackdrop} onClick={() => setItemDetalhes(null)}>
+          <div className={`${styles.modalCard} ${styles.modalCardDetalhes}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <Eye size={18} color="var(--vp-blue-primary)" />
@@ -1118,7 +1292,7 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
             </div>
 
             <div className={styles.modalBody}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", fontSize: "0.85rem" }}>
+              <div className={styles.detalhesGrid}>
                 <div>
                   <span style={{ color: "var(--vp-text-muted)", fontSize: "0.75rem" }}>Data do Envio:</span>
                   <div style={{ fontWeight: 600 }}>{formatarDataBR(itemDetalhes.data)}</div>
@@ -1142,11 +1316,11 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                   </div>
                 </div>
 
-                <div>
+                <div style={{ gridColumn: "1 / -1" }}>
                   <span style={{ color: "var(--vp-text-muted)", fontSize: "0.75rem" }}>Equipamento / Conteúdo:</span>
                   <div style={{ fontWeight: 600 }}>{itemDetalhes.conteudo}</div>
                 </div>
-                <div style={{ gridColumn: "span 2" }}>
+                <div style={{ gridColumn: "1 / -1" }}>
                   {(() => {
                     const macs = Array.isArray(itemDetalhes.macs) && itemDetalhes.macs.length > 0
                       ? itemDetalhes.macs
@@ -1360,14 +1534,7 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
             <div className={styles.modalFooter}>
               <button
                 type="button"
-                style={{
-                  height: "36px",
-                  padding: "0 1.25rem",
-                  border: "1px solid var(--vp-border-default)",
-                  borderRadius: "4px",
-                  background: "#fff",
-                  cursor: "pointer"
-                }}
+                className={styles.btnSecondary}
                 onClick={() => setItemDetalhes(null)}
               >
                 Fechar
