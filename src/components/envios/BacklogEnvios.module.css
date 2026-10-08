@@ -182,6 +182,196 @@
   color: var(--vp-danger);
 }
 
+/* ==========================================================================
+   Mini-Pipeline de Etapas da Bancada (Controle Cromático das Fases)
+   ========================================================================== */
+.pipelineBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--vp-bg-surface);
+  border: 1px solid var(--vp-border-light);
+  border-radius: var(--vp-radius-md);
+  padding: 0.55rem 0.85rem;
+  margin-bottom: 0.85rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.pipelineHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pipelineLabel {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--vp-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pipelineTabs {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.pipelinePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 32px;
+  padding: 0 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: var(--vp-radius-sm);
+  border: 1px solid var(--vp-border-default);
+  background-color: var(--vp-bg-surface);
+  color: var(--vp-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.pipelinePill:hover {
+  background-color: var(--vp-bg-subtle);
+  border-color: var(--vp-border-subtle);
+}
+
+.pipelineCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  border-radius: 9999px;
+  background-color: #f1f5f9;
+  color: var(--vp-navy-dark);
+}
+
+.pipelineCountAlert {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  border-radius: 9999px;
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+/* Estados Ativos do Pipeline */
+.pipelinePillActiveTodas {
+  background-color: var(--vp-navy-dark) !important;
+  border-color: var(--vp-navy-dark) !important;
+  color: #ffffff !important;
+}
+
+.pipelinePillActiveTodas .pipelineCount {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Etapa 1: Falta NF-e (Salmão / Coral marcante como na planilha) */
+.pipelinePillSemNfe {
+  border-color: #fdba74;
+}
+
+.pipelinePillSemNfe:hover {
+  background-color: #fff7ed;
+}
+
+.pipelinePillActiveSemNfe {
+  background-color: #ffedd5 !important;
+  border-color: #ea580c !important;
+  color: #9a3412 !important;
+  box-shadow: 0 1px 3px rgba(234, 88, 12, 0.2);
+}
+
+.pipelinePillActiveSemNfe .pipelineCount {
+  background-color: #ea580c;
+  color: #ffffff;
+}
+
+/* Etapa 2: Pronto p/ Correios (Azul / Ouro) */
+.pipelinePillComNfe {
+  border-color: #bfdbfe;
+}
+
+.pipelinePillComNfe:hover {
+  background-color: #eff6ff;
+}
+
+.pipelinePillActiveComNfe {
+  background-color: #dbeafe !important;
+  border-color: #2563eb !important;
+  color: #1e40af !important;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2);
+}
+
+.pipelinePillActiveComNfe .pipelineCount {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+/* Gargalo >48h */
+.pipelinePillCritico {
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.pipelinePillCritico:hover {
+  background-color: #fef2f2;
+}
+
+.pipelinePillActiveCritico {
+  background-color: #fee2e2 !important;
+  border-color: #dc2626 !important;
+  color: #991b1b !important;
+}
+
+/* Dots Coloridos das Fases */
+.dotLaranja {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: #f97316;
+  display: inline-block;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+}
+
+.dotAzul {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: #0284c7;
+  display: inline-block;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+}
+
+.dotVermelho {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  display: inline-block;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
 /* Banner de Alerta de Gargalo (>48h) */
 .gargaloAlert {
   display: flex;
@@ -236,22 +426,38 @@
   background-color: var(--vp-bg-subtle);
 }
 
-.trCritical {
-  background-color: #fff8f8;
+/* ==========================================================================
+   Diferenciação Cromática Forte das Linhas por Etapa da Esteira
+   ========================================================================== */
+
+/* Etapa 1: Em Mesa / Aguardando NF-e (Tom Salmão suave com borda lateral Laranja vibrante) */
+.trEtapaFaltaNfe {
+  background-color: #fffbf5 !important;
+  border-left: 5px solid #f97316 !important;
 }
 
-.trCritical:hover {
-  background-color: #fceeed;
+.trEtapaFaltaNfe:hover {
+  background-color: #ffedd5 !important;
 }
 
-/* Card / Linha com NF-e anexada aguardando apenas código de rastreio */
-.trComNfe {
-  background-color: #ebf1f8 !important; /* Tonalidade levemente mais escura azulada */
-  border-left: 4px solid var(--vp-blue-primary) !important;
+/* Etapa 1 Crítica: Sem NF-e há >48h (Tom Rosado suave com borda lateral Vermelha de alerta) */
+.trEtapaCritico {
+  background-color: #fff5f5 !important;
+  border-left: 5px solid #ef4444 !important;
 }
 
-.trComNfe:hover {
-  background-color: #e0eaf4 !important;
+.trEtapaCritico:hover {
+  background-color: #fee2e2 !important;
+}
+
+/* Etapa 2: NF-e Anexada! Pronto p/ Correios (Tom Azul celeste claro com borda lateral Azul VendPago) */
+.trEtapaProntoCorreios {
+  background-color: #f0f7ff !important;
+  border-left: 5px solid #0056b5 !important;
+}
+
+.trEtapaProntoCorreios:hover {
+  background-color: #e0eefd !important;
 }
 
 .trDragging {
@@ -369,6 +575,54 @@
 
 .btnConcluirRapido:hover {
   background-color: var(--vp-emerald-dark);
+}
+
+/* Botão de Conclusão na Etapa 2 (Pronto p/ Correios): Verde Vibrante de Ação */
+.btnConcluirPronto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 28px;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: #16a34a;
+  border: 1px solid #15803d;
+  border-radius: var(--vp-radius-sm);
+  color: #ffffff;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(22, 163, 74, 0.25);
+  transition: all 0.15s ease;
+}
+
+.btnConcluirPronto:hover {
+  background-color: #15803d;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(22, 163, 74, 0.35);
+}
+
+/* Botão de Conclusão na Etapa 1 (Ainda falta NF-e): Calmo e Neutro */
+.btnConcluirNormal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 28px;
+  padding: 0 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--vp-radius-sm);
+  color: var(--vp-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.btnConcluirNormal:hover {
+  background-color: #e2e8f0;
+  color: var(--vp-navy-dark);
 }
 
 .btnActionIcon {
@@ -908,13 +1162,108 @@
 }
 
 /* ==========================================================================
-   Botões Interativos de NF-e
+   Botões Interativos de NF-e (Destaque Amarelo Ouro vs Salmão da Planilha)
    ========================================================================== */
+
+/* Botão NF-e na Etapa 2: Amarelo Ouro Vibrante (como a célula 6289 da planilha) */
+.btnNfeAmarelo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.6rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #713f12; /* Contraste nítido sobre fundo amarelo */
+  background-color: #fef08a; /* Amarelo ouro idêntico ao Google Sheets do usuário */
+  border: 1.5px solid #eab308;
+  border-radius: var(--vp-radius-sm);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(234, 179, 8, 0.25);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btnNfeAmarelo:hover {
+  background-color: #fde047;
+  border-color: #ca8a04;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(234, 179, 8, 0.35);
+}
+
+.nfeAmareloTag {
+  font-family: var(--vp-font-sans, system-ui, sans-serif);
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #854d0e;
+  background-color: #fef9c3;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  border: 1px solid #facc15;
+}
+
+.btnNfeEditTag {
+  font-family: var(--vp-font-sans, system-ui, sans-serif);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #a16207;
+  opacity: 0.85;
+}
+
+/* Botão NF-e na Etapa 1: Salmão / Coral Vibrante (como na planilha do usuário) */
+.btnNfeSalmao {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #9a3412; /* Laranja escuro / telha */
+  background-color: #ffedd5; /* Fundo Salmão/Coral marcante */
+  border: 1.5px solid #fdba74;
+  border-radius: var(--vp-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btnNfeSalmao:hover {
+  background-color: #fed7aa;
+  border-color: #fb923c;
+  transform: translateY(-1px);
+}
+
+/* Botão NF-e na Etapa 1 Crítica (>48h sem NF-e) */
+.btnNfeSalmaoCritico {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #991b1b;
+  background-color: #fee2e2;
+  border: 1.5px solid #fca5a5;
+  border-radius: var(--vp-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btnNfeSalmaoCritico:hover {
+  background-color: #fecaca;
+  border-color: #ef4444;
+  transform: translateY(-1px);
+}
+
+/* Classes legadas para compatibilidade */
 .btnNfePendente {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.25rem 0.55rem;
+  padding: 0.22rem 0.55rem;
   font-size: 0.72rem;
   font-weight: 700;
   border-radius: var(--vp-radius-sm);
@@ -923,74 +1272,59 @@
   white-space: nowrap;
 }
 
-.btnNfeNeutral {
-  background-color: #f1f5f9;
-  border: 1px dashed #94a3b8;
-  color: #475569;
-}
-
-.btnNfeNeutral:hover {
-  background-color: #e2e8f0;
-  border-color: #64748b;
-  color: var(--vp-navy-dark);
-  transform: translateY(-1px);
-}
-
 .btnNfeWarning {
-  background-color: var(--vp-warning-light);
-  border: 1px solid var(--vp-warning-border);
-  color: var(--vp-warning);
-}
-
-.btnNfeWarning:hover {
-  background-color: #fef08a;
-  border-color: #eab308;
-  transform: translateY(-1px);
+  background-color: #ffedd5;
+  border: 1.5px solid #fdba74;
+  color: #9a3412;
 }
 
 .btnNfeDanger {
-  background-color: var(--vp-danger-light);
-  border: 1px solid var(--vp-danger-border);
-  color: var(--vp-danger);
-}
-
-.btnNfeDanger:hover {
   background-color: #fee2e2;
-  border-color: #ef4444;
-  transform: translateY(-1px);
+  border: 1.5px solid #fca5a5;
+  color: #991b1b;
 }
 
 .btnNfeAnexada {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.2rem 0.5rem;
-  font-family: monospace;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--vp-navy-dark);
-  background-color: #ffffff;
-  border: 1px solid #bfdbfe;
-  border-radius: var(--vp-radius-sm);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.btnNfeAnexada:hover {
-  background-color: #eff6ff;
-  border-color: var(--vp-blue-primary);
-  box-shadow: 0 1px 3px rgba(0, 86, 181, 0.15);
+  composes: btnNfeAmarelo;
 }
 
 .btnNfeTag {
-  font-family: var(--vp-font-sans, system-ui, sans-serif);
-  font-size: 0.65rem;
+  composes: btnNfeEditTag;
+}
+
+/* ==========================================================================
+   Badges e Status da Coluna Tipo / Rastreio
+   ========================================================================== */
+.pillProntoCorreios {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.55rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  text-transform: uppercase;
-  color: var(--vp-blue-primary);
+  color: #1e40af;
   background-color: #dbeafe;
-  padding: 0.05rem 0.3rem;
-  border-radius: 3px;
+  border: 1px solid #93c5fd;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.textAguardandoNfe {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #c2410c;
+  white-space: nowrap;
+}
+
+.rastreioCode {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--vp-blue-primary);
 }
 
 /* ==========================================================================

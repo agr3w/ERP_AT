@@ -2,6 +2,8 @@ import {
   collection,
   addDoc,
   updateDoc,
+  setDoc,
+  getDoc,
   doc,
   getDocs,
   query,
@@ -25,10 +27,11 @@ const LOCAL_STORAGE_KEY = "vendpago_erp_envios_v5";
  * @returns {number} Dias aguardando NF-e (0 se não estiver aguardando)
  */
 export function calcularDiasAguardandoNfe(dataCadastro, nfe) {
-  if (!nfe) return 0;
-
-  const nfeNormalizado = String(nfe).trim().toLowerCase();
-  const isAguardando = nfeNormalizado === "a ser informado" || nfeNormalizado === "a ser informada";
+  const nfeNormalizado = String(nfe || "").trim().toLowerCase();
+  const isAguardando =
+    !nfeNormalizado ||
+    nfeNormalizado === "a ser informado" ||
+    nfeNormalizado === "a ser informada";
 
   if (!isAguardando) {
     return 0;
@@ -80,7 +83,8 @@ export function calcularDiasAguardandoNfe(dataCadastro, nfe) {
  */
 function processarEnvioData(docId, rawData) {
   const dataEnvio = rawData.data || new Date().toISOString().split("T")[0];
-  const nfe = rawData.nfe || "";
+  const nfeRaw = String(rawData.nfe || "").trim();
+  const nfe = nfeRaw || "A ser informado";
   const diasAguardando = calcularDiasAguardandoNfe(dataEnvio, nfe);
 
   return {
@@ -164,10 +168,12 @@ function saveLocalCache(list) {
  * @returns {Promise<Object>}
  */
 export async function createEnvio(envioData) {
-  const diasAguardando = calcularDiasAguardandoNfe(envioData.data, envioData.nfe);
+  const nfeFinal = String(envioData.nfe || "").trim() || "A ser informado";
+  const diasAguardando = calcularDiasAguardandoNfe(envioData.data, nfeFinal);
 
   const payload = {
     ...envioData,
+    nfe: nfeFinal,
     testado: Boolean(envioData.testado),
     doubleCheck: Boolean(envioData.doubleCheck),
     enviado: Boolean(envioData.enviado),
@@ -211,10 +217,14 @@ export async function createEnvio(envioData) {
  */
 export async function updateEnvio(id, updateData) {
   const dataEnvio = updateData.data || new Date().toISOString().split("T")[0];
-  const diasAguardando = calcularDiasAguardandoNfe(dataEnvio, updateData.nfe);
+  const nfeFinal = updateData.nfe !== undefined
+    ? (String(updateData.nfe || "").trim() || "A ser informado")
+    : undefined;
+  const diasAguardando = calcularDiasAguardandoNfe(dataEnvio, nfeFinal !== undefined ? nfeFinal : updateData.nfe);
 
   const sanitizedUpdate = {
     ...updateData,
+    ...(nfeFinal !== undefined ? { nfe: nfeFinal } : {}),
     diasAguardandoNfe: diasAguardando,
     aguardandoMaisDe48h: diasAguardando >= 2,
     atualizadoEm: new Date().toISOString()
@@ -485,3 +495,95 @@ export async function getMetrics() {
     periodoReferencia: `${agora.toLocaleString("pt-BR", { month: "long" })} / ${anoAtual}`
   };
 }
+
+const COLLECTION_CONFIG = "configuracoes";
+const DOC_ESTEIRA = "esteira_bancada";
+const LOCAL_STORAGE_CONFIG_KEY = "vp_backlog_envios_prefs";
+
+/**
+ * Obtém a configuração global da esteira de envios (ordem e filtros) do Firestore
+ * para que todos os operadores e deploys mantenham a mesma ordem.
+ * @returns {Promise<Object>}
+ */
+export async function obterConfiguracaoEsteira() {
+  if (db) {
+    try {
+      const docRef = doc(db, COLLECTION_CONFIG, DOC_ESTEIRA);
+      const snapshot = await getDoc(docRef);
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        return {
+          sortConfig: data.sortConfig || { key: null, direction: null },
+          ordemManualIds: Array.isArray(data.ordemManualIds) ? data.ordemManualIds : [],
+          tipoFiltro: data.tipoFiltro || "TODOS",
+          filtroEtapa: data.filtroEtapa || "TODAS"
+        };
+      }
+    } catch (error) {
+      console.warn("Consulta Firestore da esteira falhou. Usando preferências locais:", error);
+    }
+  }
+
+  // Fallback cache local
+  try {
+    const salvo = localStorage.getItem(LOCAL_STORAGE_CONFIG_KEY);
+    if (salvo) {
+      const parsed = JSON.parse(salvo);
+      return {
+        sortConfig: parsed.sortConfig || { key: null, direction: null },
+        ordemManualIds: Array.isArray(parsed.ordemManualIds) ? parsed.ordemManualIds : [],
+        tipoFiltro: parsed.tipoFiltro || "TODOS",
+        filtroEtapa: parsed.filtroEtapa || "TODAS"
+      };
+    }
+  } catch {
+    // Ignora
+  }
+
+  return {
+    sortConfig: { key: null, direction: null },
+    ordemManualIds: [],
+    tipoFiltro: "TODOS",
+    filtroEtapa: "TODAS"
+  };
+}
+
+/**
+ * Salva a configuração global da esteira de envios (ordem e filtros) no Firestore
+ * @param {Object} config
+ * @returns {Promise<boolean>}
+ */
+export async function salvarConfiguracaoEsteira(config) {
+  const payload = {
+    sortConfig: config.sortConfig || { key: null, direction: null },
+    ordemManualIds: Array.isArray(config.ordemManualIds) ? config.ordemManualIds : [],
+    tipoFiltro: config.tipoFiltro || "TODOS",
+    filtroEtapa: config.filtroEtapa || "TODAS",
+    atualizadoEm: new Date().toISOString()
+  };
+
+  // Atualiza cache local imediatamente
+  try {
+    const atual = localStorage.getItem(LOCAL_STORAGE_CONFIG_KEY);
+    const parsed = atual ? JSON.parse(atual) : {};
+    localStorage.setItem(LOCAL_STORAGE_CONFIG_KEY, JSON.stringify({ ...parsed, ...payload }));
+  } catch {
+    // Ignora
+  }
+
+  if (db) {
+    try {
+      const docRef = doc(db, COLLECTION_CONFIG, DOC_ESTEIRA);
+      await setDoc(docRef, {
+        ...payload,
+        atualizadoEmServer: serverTimestamp()
+      }, { merge: true });
+      return true;
+    } catch (error) {
+      console.warn("Salvamento Firestore da esteira falhou:", error);
+    }
+  }
+
+  return false;
+}
+

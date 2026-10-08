@@ -452,7 +452,7 @@ export const gerarTextoCobrancaBitrix = (item) => {
   const itensDesc = item.conteudo || (Array.isArray(item.itens) ? item.itens.map(i => `${i.qtd}x ${i.nome}`).join(' + ') : 'Equipamentos AT');
 
   return [
-    `📦 COTAÇÃO DE FRETE - ASSISTÊNCIA TÉCNICA`,
+    `[COTAÇÃO DE FRETE - ASSISTÊNCIA TÉCNICA]`,
     `• Data do Envio: ${formatarDataBR(item.data)}`,
     `• Chamado / Ticket: ${numChamado}`,
     `• Destinatário: ${dest}`,

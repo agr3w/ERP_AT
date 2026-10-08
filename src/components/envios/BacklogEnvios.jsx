@@ -26,13 +26,18 @@ import {
   ChevronDown,
   ArrowUpDown,
   RotateCcw,
-  Save
+  Save,
+  Package,
+  Send,
+  FileText
 } from "lucide-react";
 import {
   getEnviosPendentes,
   getEnviosConcluidos,
   updateEnvio,
-  deleteEnvio
+  deleteEnvio,
+  obterConfiguracaoEsteira,
+  salvarConfiguracaoEsteira
 } from "../../services/envioService";
 import {
   MOTIVOS,
@@ -61,16 +66,89 @@ const getBadgeStyle = (motivoNome) => {
   };
 };
 
+// Chave para memorização de preferências de filtros e ordenação
+const STORAGE_KEY_PREFS = "vp_backlog_envios_prefs";
+
+const carregarPreferenciasIniciais = () => {
+  try {
+    const salvo = localStorage.getItem(STORAGE_KEY_PREFS);
+    if (salvo) {
+      const parsed = JSON.parse(salvo);
+      return {
+        activeTab: parsed.activeTab === "concluidos" ? "concluidos" : "pendentes",
+        tipoFiltro: typeof parsed.tipoFiltro === "string" ? parsed.tipoFiltro : "TODOS",
+        filtroEtapa: typeof parsed.filtroEtapa === "string" ? parsed.filtroEtapa : "TODAS",
+        apenasAtrasados48h: Boolean(parsed.apenasAtrasados48h),
+        sortConfig:
+          parsed.sortConfig && typeof parsed.sortConfig === "object"
+            ? parsed.sortConfig
+            : { key: null, direction: null },
+        searchQuery: typeof parsed.searchQuery === "string" ? parsed.searchQuery : "",
+        ordemManualIds: Array.isArray(parsed.ordemManualIds) ? parsed.ordemManualIds : []
+      };
+    }
+  } catch (err) {
+    console.error("Erro ao carregar preferências de envios do localStorage:", err);
+  }
+  return {
+    activeTab: "pendentes",
+    tipoFiltro: "TODOS",
+    filtroEtapa: "TODAS",
+    apenasAtrasados48h: false,
+    sortConfig: { key: null, direction: null },
+    searchQuery: "",
+    ordemManualIds: []
+  };
+};
+
 export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = null }) {
-  const [activeTab, setActiveTab] = useState("pendentes"); // "pendentes" | "concluidos"
+  const prefsIniciais = useMemo(() => carregarPreferenciasIniciais(), []);
+
+  const [activeTab, setActiveTab] = useState(() => prefsIniciais.activeTab); // "pendentes" | "concluidos"
   const [pendentes, setPendentes] = useState([]);
   const [concluidos, setConcluidos] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filtros
-  const [searchQuery, setSearchQuery] = useState("");
-  const [tipoFiltro, setTipoFiltro] = useState("TODOS");
-  const [apenasAtrasados48h, setApenasAtrasados48h] = useState(false);
+  // Filtros memorizados
+  const [searchQuery, setSearchQuery] = useState(() => prefsIniciais.searchQuery);
+  const [tipoFiltro, setTipoFiltro] = useState(() => prefsIniciais.tipoFiltro);
+  const [filtroEtapa, setFiltroEtapa] = useState(() => prefsIniciais.filtroEtapa || "TODAS");
+  const [apenasAtrasados48h, setApenasAtrasados48h] = useState(() => prefsIniciais.apenasAtrasados48h);
+
+  // Estado de ordenação da coluna memorizado: { key: string | null, direction: 'asc' | 'desc' | null }
+  const [sortConfig, setSortConfig] = useState(() => prefsIniciais.sortConfig);
+  const [ordemManualIds, setOrdemManualIds] = useState(() => prefsIniciais.ordemManualIds);
+  const [draggedIndex, setDraggedIndex] = useState(null);
+
+  // Salva preferências no localStorage e sincroniza a esteira no Firestore para todo o deploy geral
+  useEffect(() => {
+    try {
+      const prefs = {
+        activeTab,
+        tipoFiltro,
+        filtroEtapa,
+        apenasAtrasados48h,
+        sortConfig,
+        searchQuery,
+        ordemManualIds
+      };
+      localStorage.setItem(STORAGE_KEY_PREFS, JSON.stringify(prefs));
+    } catch (err) {
+      console.error("Erro ao salvar preferências de envios no localStorage:", err);
+    }
+
+    // Sincroniza ordem e critérios da esteira no banco de dados para todo o deploy geral
+    const timer = setTimeout(() => {
+      salvarConfiguracaoEsteira({
+        sortConfig,
+        ordemManualIds,
+        tipoFiltro,
+        filtroEtapa
+      });
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [activeTab, tipoFiltro, filtroEtapa, apenasAtrasados48h, sortConfig, searchQuery, ordemManualIds]);
 
   // Modais de Ação Rápida
   const [itemParaConcluir, setItemParaConcluir] = useState(null);
@@ -102,11 +180,6 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [itemDetalhes, itemModalNfe, itemParaConcluir]);
-
-  // Estado de ordenação da coluna: { key: string | null, direction: 'asc' | 'desc' | null }
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
-  const [ordemManualIds, setOrdemManualIds] = useState([]);
-  const [draggedIndex, setDraggedIndex] = useState(null);
 
   // Alternador de ciclo: Desc -> Asc -> Padrão
   const handleSort = (key) => {
@@ -275,16 +348,33 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
     setTimeout(() => setCopiadoBitrix(false), 2200);
   };
 
-  // Carrega lista de envios
+  // Carrega lista de envios e sincroniza a configuração compartilhada da esteira do Firestore
   const carregarDados = async () => {
     setLoading(true);
     try {
-      const [listPendentes, listConcluidos] = await Promise.all([
+      const [listPendentes, listConcluidos, configEsteira] = await Promise.all([
         getEnviosPendentes(),
-        getEnviosConcluidos()
+        getEnviosConcluidos(),
+        obterConfiguracaoEsteira()
       ]);
       setPendentes(listPendentes);
       setConcluidos(listConcluidos);
+
+      // Sincroniza a ordem e filtros globais salvos no Firestore para todo o deploy
+      if (configEsteira) {
+        if (configEsteira.sortConfig && (configEsteira.sortConfig.key || configEsteira.sortConfig.direction)) {
+          setSortConfig(configEsteira.sortConfig);
+        }
+        if (Array.isArray(configEsteira.ordemManualIds) && configEsteira.ordemManualIds.length > 0) {
+          setOrdemManualIds(configEsteira.ordemManualIds);
+        }
+        if (configEsteira.tipoFiltro && configEsteira.tipoFiltro !== "TODOS") {
+          setTipoFiltro(configEsteira.tipoFiltro);
+        }
+        if (configEsteira.filtroEtapa && configEsteira.filtroEtapa !== "TODAS") {
+          setFiltroEtapa(configEsteira.filtroEtapa);
+        }
+      }
     } catch (err) {
       console.error("Erro ao carregar dados do backlog:", err);
     } finally {
@@ -298,14 +388,23 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
 
   // Total de itens aguardando NF-e há mais de 48h
   const totalAtrasados48h = useMemo(() => {
-    return pendentes.filter((item) => item.diasAguardandoNfe >= 2).length;
+    return pendentes.filter((item) => item.diasAguardandoNfe >= 2 && !temNfeAnexada(item)).length;
+  }, [pendentes]);
+
+  // Contadores cromáticos do Mini-Pipeline da bancada
+  const totalSemNfe = useMemo(() => {
+    return pendentes.filter((item) => !temNfeAnexada(item)).length;
+  }, [pendentes]);
+
+  const totalComNfe = useMemo(() => {
+    return pendentes.filter((item) => temNfeAnexada(item)).length;
   }, [pendentes]);
 
   // Lista atual conforme aba, filtros e critério de ordenação
   const listaExibida = useMemo(() => {
     const base = activeTab === "pendentes" ? pendentes : concluidos;
 
-    // 1. Filtragem por busca e critérios
+    // 1. Filtragem por busca e critérios cromáticos de etapa
     const filtrados = base.filter((item) => {
       const term = searchQuery.toLowerCase().trim();
       const matchText =
@@ -320,9 +419,18 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
         (item.motivo && item.motivo.toLowerCase().includes(term));
 
       const matchTipo = tipoFiltro === "TODOS" || item.tipoEnvio === tipoFiltro;
-      const matchAtraso = !apenasAtrasados48h || (activeTab === "pendentes" && item.diasAguardandoNfe >= 2);
+      const matchAtraso = !apenasAtrasados48h || (activeTab === "pendentes" && item.diasAguardandoNfe >= 2 && !temNfeAnexada(item));
 
-      return matchText && matchTipo && matchAtraso;
+      // Filtro cromático por Etapa da Esteira
+      const isComNfe = temNfeAnexada(item);
+      const matchEtapa = (() => {
+        if (activeTab !== "pendentes") return true;
+        if (filtroEtapa === "SEM_NFE") return !isComNfe;
+        if (filtroEtapa === "COM_NFE") return isComNfe;
+        return true;
+      })();
+
+      return matchText && matchTipo && matchAtraso && matchEtapa;
     });
 
     const listaOrdenada = [...filtrados];
@@ -389,6 +497,7 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
     concluidos,
     searchQuery,
     tipoFiltro,
+    filtroEtapa,
     apenasAtrasados48h,
     sortConfig,
     ordemManualIds
@@ -456,66 +565,70 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
       return (
         <button
           type="button"
-          className={styles.btnNfeAnexada}
+          className={styles.btnNfeAmarelo}
           onClick={(e) => {
             e.stopPropagation();
             abrirModalNfe(item);
           }}
-          title="NF-e vinculada. Clique para editar ou alterar."
+          title="NF-e vinculada. Clique para editar."
         >
-          <FileCheck size={12} color="var(--vp-blue-primary)" />
+          <FileCheck size={12} color="#854d0e" />
+          <span className={styles.nfeAmareloTag}>NF</span>
           <span>{item.nfe}</span>
-          <span className={styles.btnNfeTag}>Editar</span>
+          <span className={styles.btnNfeEditTag}>Editar</span>
         </button>
       );
     }
 
-    if (item.diasAguardandoNfe >= 2) {
+    const dias = typeof item.diasAguardandoNfe === "number" ? item.diasAguardandoNfe : 0;
+
+    if (dias >= 2) {
       return (
         <button
           type="button"
-          className={`${styles.btnNfePendente} ${styles.btnNfeDanger}`}
+          className={styles.btnNfeSalmaoCritico}
           onClick={(e) => {
             e.stopPropagation();
             abrirModalNfe(item);
           }}
-          title={`Aguardando NF-e há ${item.diasAguardandoNfe} dias (> 48h). Clique para anexar NF-e.`}
+          title={`Aguardando NF-e há ${dias} dias (> 48h). Clique para anexar NF-e.`}
         >
-          <AlertTriangle size={12} />
-          <span>{item.diasAguardandoNfe}d (&gt;48h) • Anexar NF-e</span>
+          <AlertTriangle size={12} color="#dc2626" />
+          <span>{dias}d (&gt;48h) • Falta NF-e</span>
         </button>
       );
     }
 
-    if (item.diasAguardandoNfe === 1) {
+    if (dias === 1) {
       return (
         <button
           type="button"
-          className={`${styles.btnNfePendente} ${styles.btnNfeWarning}`}
+          className={styles.btnNfeSalmao}
           onClick={(e) => {
             e.stopPropagation();
             abrirModalNfe(item);
           }}
-          title="Aguardando NF-e há 1 dia (24h). Clique para anexar NF-e."
+          title="Aguardando NF-e há 1 dia. Clique para anexar NF-e."
         >
-          <Clock size={12} />
-          <span>1d • Anexar NF-e</span>
+          <Clock size={12} color="#ea580c" />
+          <span>1d • Falta NF-e</span>
         </button>
       );
     }
 
+    // Para itens cadastrados hoje (0 dias)
     return (
       <button
         type="button"
-        className={`${styles.btnNfePendente} ${styles.btnNfeNeutral}`}
+        className={styles.btnNfeSalmao}
         onClick={(e) => {
           e.stopPropagation();
           abrirModalNfe(item);
         }}
-        title="Clique para anexar o número da NF-e deste envio"
+        title="Aguardando NF-e (cadastrado hoje). Clique para anexar NF-e."
       >
-        <Plus size={12} />
-        <span>Aguardando NF-e (+ Anexar)</span>
+        <Clock size={12} color="#ea580c" />
+        <span>0d • Falta NF-e</span>
       </button>
     );
   };
@@ -616,8 +729,93 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
         </div>
       </div>
 
+      {/* Mini-Pipeline de Etapas da Bancada (Controle Cromático das Fases) */}
+      {activeTab === "pendentes" && (
+        <div className={styles.pipelineBar}>
+          <div className={styles.pipelineHeader}>
+            <span className={styles.pipelineLabel}>
+              <Package size={14} color="var(--vp-navy-dark)" />
+              Etapas:
+            </span>
+            <div className={styles.pipelineTabs}>
+              <button
+                type="button"
+                className={`${styles.pipelinePill} ${
+                  filtroEtapa === "TODAS" && !apenasAtrasados48h
+                    ? styles.pipelinePillActiveTodas
+                    : ""
+                }`}
+                onClick={() => {
+                  setFiltroEtapa("TODAS");
+                  setApenasAtrasados48h(false);
+                }}
+                title="Exibir toda a bancada de pendentes"
+              >
+                <Inbox size={13} />
+                <span>Todas</span>
+                <span className={styles.pipelineCount}>{pendentes.length}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.pipelinePill} ${styles.pipelinePillSemNfe} ${
+                  filtroEtapa === "SEM_NFE" && !apenasAtrasados48h
+                    ? styles.pipelinePillActiveSemNfe
+                    : ""
+                }`}
+                onClick={() => {
+                  setFiltroEtapa("SEM_NFE");
+                  setApenasAtrasados48h(false);
+                }}
+                title="Equipamentos testados/embalados na mesa aguardando emissão da NF-e"
+              >
+                <Clock size={13} />
+                <span>1. Falta NF-e</span>
+                <span className={styles.pipelineCount}>{totalSemNfe}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.pipelinePill} ${styles.pipelinePillComNfe} ${
+                  filtroEtapa === "COM_NFE" && !apenasAtrasados48h
+                    ? styles.pipelinePillActiveComNfe
+                    : ""
+                }`}
+                onClick={() => {
+                  setFiltroEtapa("COM_NFE");
+                  setApenasAtrasados48h(false);
+                }}
+                title="NF-e anexada! Caixas prontas para adicionar nos Correios ou exportar CSV"
+              >
+                <PackageCheck size={13} />
+                <span>2. Pronto p/ Correios</span>
+                <span className={styles.pipelineCount}>{totalComNfe}</span>
+              </button>
+
+              {totalAtrasados48h > 0 && (
+                <button
+                  type="button"
+                  className={`${styles.pipelinePill} ${styles.pipelinePillCritico} ${
+                    apenasAtrasados48h ? styles.pipelinePillActiveCritico : ""
+                  }`}
+                  onClick={() => {
+                    setApenasAtrasados48h(!apenasAtrasados48h);
+                    if (!apenasAtrasados48h) setFiltroEtapa("TODAS");
+                  }}
+                  title="Pacotes travados há mais de 48h sem NF-e"
+                >
+                  <AlertTriangle size={13} />
+                  <span>Gargalo &gt;48h</span>
+                  <span className={styles.pipelineCountAlert}>{totalAtrasados48h}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Alerta de Gargalo na Aba de Pendentes */}
-      {activeTab === "pendentes" && totalAtrasados48h > 0 && (
+      {activeTab === "pendentes" && totalAtrasados48h > 0 && !apenasAtrasados48h && (
         <div className={styles.gargaloAlert}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <AlertTriangle size={18} />
@@ -629,12 +827,10 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
 
           <button
             type="button"
-            className={`${styles.filterToggle} ${
-              apenasAtrasados48h ? styles.filterToggleActive : ""
-            }`}
-            onClick={() => setApenasAtrasados48h(!apenasAtrasados48h)}
+            className={styles.filterToggle}
+            onClick={() => setApenasAtrasados48h(true)}
           >
-            {apenasAtrasados48h ? "Exibir Todos" : "Filtrar Somente Gargalo (>48h)"}
+            Filtrar Somente Gargalo (&gt;48h)
           </button>
         </div>
       )}
@@ -678,6 +874,32 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
               <span>Apenas &gt; 48h</span>
             </button>
           )}
+
+          {(Boolean(searchQuery) || tipoFiltro !== "TODOS" || filtroEtapa !== "TODAS" || apenasAtrasados48h || sortConfig.key !== null) && (
+            <button
+              type="button"
+              className={styles.filterToggle}
+              style={{ color: "var(--vp-text-secondary)", gap: "4px" }}
+              onClick={() => {
+                setSearchQuery("");
+                setTipoFiltro("TODOS");
+                setFiltroEtapa("TODAS");
+                setApenasAtrasados48h(false);
+                setSortConfig({ key: null, direction: null });
+                setOrdemManualIds([]);
+                salvarConfiguracaoEsteira({
+                  sortConfig: { key: null, direction: null },
+                  ordemManualIds: [],
+                  tipoFiltro: "TODOS",
+                  filtroEtapa: "TODAS"
+                });
+              }}
+              title="Redefinir busca, filtros e ordenação para o padrão da bancada"
+            >
+              <RotateCcw size={12} />
+              <span>Redefinir</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -688,7 +910,8 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
             <span>Fila da Bancada: <strong>{listaExibida.length} pacote(s)</strong></span>
             {selectedIds.size > 0 && (
               <span className={styles.badgeSelectedCount}>
-                ✓ {selectedIds.size} selecionado(s) para o lote
+                <Check size={12} />
+                <span>{selectedIds.size} selecionado(s) para o lote</span>
               </span>
             )}
           </div>
@@ -836,10 +1059,24 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
             ) : (
               listaExibida.map((item, index) => {
                 const isSelected = selectedIds.has(item.id);
-                const isCritical =
-                  activeTab === "pendentes" && item.diasAguardandoNfe >= 2;
                 const comNfe = temNfeAnexada(item);
-                const isProntoDespacho = comNfe && activeTab === "pendentes";
+                const isCritical =
+                  activeTab === "pendentes" && item.diasAguardandoNfe >= 2 && !comNfe;
+                const isFaltaNfe =
+                  activeTab === "pendentes" && !comNfe && !isCritical;
+                const isProntoCorreios =
+                  activeTab === "pendentes" && comNfe;
+
+                let trEtapaClass = "";
+                if (isSelected) {
+                  trEtapaClass = styles.trSelected;
+                } else if (isCritical) {
+                  trEtapaClass = styles.trEtapaCritico;
+                } else if (isFaltaNfe) {
+                  trEtapaClass = styles.trEtapaFaltaNfe;
+                } else if (isProntoCorreios) {
+                  trEtapaClass = styles.trEtapaProntoCorreios;
+                }
 
                 return (
                   <tr
@@ -848,10 +1085,8 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                     onDragStart={(e) => handleDragStart(e, index)}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, index)}
-                    className={`${styles.tr} ${isCritical ? styles.trCritical : ""} ${
-                      isProntoDespacho ? styles.trComNfe : ""
-                    } ${draggedIndex === index ? styles.trDragging : ""} ${
-                      isSelected ? styles.trSelected : ""
+                    className={`${styles.tr} ${trEtapaClass} ${
+                      draggedIndex === index ? styles.trDragging : ""
                     }`}
                   >
                     {/* CÉLULA 1: CHECKBOX DE EXPORTAÇÃO + CONTADOR #1, #2, #3 */}
@@ -989,13 +1224,21 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: "0.78rem", fontFamily: "monospace", marginTop: "2px" }}>
+                      <div style={{ marginTop: "4px" }}>
                         {item.rastreio ? (
-                          <span style={{ color: "var(--vp-blue-primary)", fontWeight: 600 }}>
+                          <span className={styles.rastreioCode} title="Código de rastreio">
                             {item.rastreio}
                           </span>
+                        ) : isProntoCorreios ? (
+                          <span className={styles.pillProntoCorreios} title="NF-e vinculada! Pronto para adicionar nos Correios">
+                            <Package size={11} />
+                            <span>Pronto p/ Correios</span>
+                          </span>
                         ) : (
-                          <span style={{ color: "var(--vp-text-dim)" }}>Sem rastreio</span>
+                          <span className={styles.textAguardandoNfe} title="Aguardando emissão da NF-e">
+                            <Clock size={11} />
+                            <span>Aguardando NF-e</span>
+                          </span>
                         )}
                       </div>
                     </td>
@@ -1009,12 +1252,16 @@ export default function BacklogEnvios({ onEditItem = null, onNavigateToNew = nul
                         {activeTab === "pendentes" && (
                           <button
                             type="button"
-                            className={styles.btnConcluirRapido}
+                            className={isProntoCorreios ? styles.btnConcluirPronto : styles.btnConcluirNormal}
                             onClick={() => abrirModalConcluir(item)}
-                            title="Despachar equipamento e preencher rastreio/NF-e"
+                            title={
+                              isProntoCorreios
+                                ? "Pacote pronto! Clique para registrar código de rastreio e concluir"
+                                : "Concluir envio ou preencher rastreio"
+                            }
                           >
-                            <FileCheck size={14} />
-                            <span>Concluir Envio</span>
+                            {isProntoCorreios ? <Send size={13} /> : <FileCheck size={13} />}
+                            <span>{isProntoCorreios ? "Despachar" : "Concluir"}</span>
                           </button>
                         )}
 

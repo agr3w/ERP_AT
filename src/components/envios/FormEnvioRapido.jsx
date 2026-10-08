@@ -506,8 +506,11 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
       enderecoConsolidado = "Retirada no Balcão - Sede VendPago";
     }
 
+    const nfeValor = formData.nfe && formData.nfe.trim() ? formData.nfe.trim() : "A ser informado";
+
     const payload = {
       ...formData,
+      nfe: nfeValor,
       data: formatarDataBR(formData.data),
       conteudo: descricaoConteudo,
       endereco: enderecoConsolidado,
@@ -897,10 +900,6 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
                           </div>
                         ))}
                       </div>
-
-                      <div className={styles.macFooterHint}>
-                        Dica: Bipe com o leitor direto ou cole uma coluna com todos os {item.qtd} MACs no campo #1 (avança automaticamente).
-                      </div>
                     </div>
                   )}
                 </div>
@@ -939,7 +938,8 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
               <div className={styles.labelRow}>
                 <label className={styles.label}>Nome Completo / Razão Social *</label>
                 <span className={styles.tagSincronizado}>
-                  ✓ Sincronizado do Topo
+                  <Check size={11} style={{ display: "inline-block", marginRight: "3px", verticalAlign: "middle" }} />
+                  Sincronizado do Topo
                 </span>
               </div>
               <input
@@ -1161,7 +1161,7 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
                 <input
                   type="text"
                   name="nfe"
-                  placeholder="Número da NF-e (Ex: 155807)"
+                  placeholder="Número da NF-e (deixe vazio para 'A ser informado')"
                   className={styles.input}
                   value={formData.nfe}
                   onChange={handleChange}
@@ -1175,6 +1175,9 @@ export default function FormEnvioRapido({ initialData = null, onSuccess = null, 
                   <Zap size={14} /> [F2] A ser informado
                 </button>
               </div>
+              <span style={{ fontSize: "0.72rem", color: "var(--vp-text-muted)", marginTop: "2px" }}>
+                Deixe em branco para cadastrar automaticamente como pendente de NF-e
+              </span>
             </div>
 
             <div className={`${styles.fieldGroup} ${styles.col6}`}>
